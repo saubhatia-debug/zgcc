@@ -350,7 +350,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 }
 
 </style>
-<!-- v:20260615092948 -->
+<!-- v:20260615094850 -->
 </head>
 <body>
 
@@ -2553,23 +2553,17 @@ ${context}`;
   /* Get Gemini API key — FREE, no credit card needed
      Get yours at: aistudio.google.com/apikey */
   let apiKey = localStorage.getItem('gcc_gemini_key') || '';
-  /* Clear invalid keys automatically */
-  if(apiKey && !apiKey.startsWith('AIza')){
-    localStorage.removeItem('gcc_gemini_key');
-    apiKey = '';
-  }
   if(!apiKey){
-    apiKey = prompt('Paste your FREE Google Gemini API key:\n(Must start with AIza...)\n\nGet free key at aistudio.google.com/apikey\n→ Click "Create API key" → Copy it', '');
-    if(!apiKey){hideTyping();addAgentMsg('bot','Key needed. Click 🔑 Change key below or ask any question to enter your Gemini key.\n\nGet free key at: aistudio.google.com/apikey');return;}
-    if(!apiKey.startsWith('AIza')){
-      hideTyping();
-      addAgentMsg('bot', `That key looks wrong — Gemini keys start with "AIza".\n\nYou entered: ${apiKey.slice(0,10)}...\n\nGo to aistudio.google.com/apikey and create a fresh key.`);
-      return;
-    }
+    apiKey = prompt('Paste your Google Gemini API key:\n\nGet free key at aistudio.google.com/apikey\n→ Click "Create API key" → Copy it', '');
+    if(!apiKey){hideTyping();addAgentMsg('bot','Key needed. Click 🔑 Change key below.\n\nGet free key at: aistudio.google.com/apikey');return;}
     localStorage.setItem('gcc_gemini_key', apiKey);
   }
 
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  /* Support both old AIzaSy keys and new AQ keys */
+  const isOAuthKey = apiKey.startsWith('AQ') || apiKey.includes('.');
+  const geminiUrl = isOAuthKey
+    ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
+    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   
   /* Build messages for Gemini format */
   const geminiMessages = _agentHistory.slice(-6).map(m => ({
@@ -2580,7 +2574,10 @@ ${context}`;
   try {
     const response = await fetch(geminiUrl, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ...(isOAuthKey ? {'Authorization': `Bearer ${apiKey}`} : {})
+      },
       body: JSON.stringify({
         system_instruction: {parts: [{text: systemPrompt}]},
         contents: geminiMessages,
