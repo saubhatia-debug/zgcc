@@ -350,7 +350,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 }
 
 </style>
-<!-- v:20260615083651 -->
+<!-- v:20260615085932 -->
 </head>
 <body>
 
@@ -2061,6 +2061,7 @@ function postWsComment(progId,wsId,wsName){
 }
 
 function renderProgComments(prog,ft,fw,fd,fs){
+  const filterStatus=fs||'open';
   ft=ft||'all';fw=fw||'all';fd=fd||'9999';fs=fs||'open';
   let all=cAll().filter(c=>c.progId===prog.id);
   if(ft!=='all')all=all.filter(c=>c.type===ft);
@@ -2156,6 +2157,28 @@ function unresolveComment(progId,cid){
 }
 
 /* --- Role application (all functions defined above this point) --- */
+function applyViewerGuards(){
+  if(_ROLE==='cos')return;
+  document.body.classList.add('viewer-mode');
+  document.documentElement.setAttribute('data-role',_ROLE);
+  ['openEditTask','openAddTask','openEditWsModal','openAddWsModal',
+   'openNewProgModal','openEditProgModal','toggleEditMode',
+   'saveTask','deleteTask','saveWs','saveProg','deleteCurrentProg'].forEach(fn=>{
+    if(typeof window[fn]==='function'){
+      window[fn]=function(){try{showToast('Read-only — contact your CoS');}catch(e){}};
+    }
+  });
+  ['#edit-toggle','#btn-export-excel','#btn-export-html','#btn-shared-storage',
+   '.add-task-btn','.edit-task-btn','.ws-icon-btn',
+   '.prog-edit-inline','.prog-tab-actions','.prog-add-tab',
+   '.viewer-hidden-tab'].forEach(sel=>{
+    document.querySelectorAll(sel).forEach(el=>el.style.display='none');
+  });
+  ['task-modal','prog-modal','ws-modal'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.classList.add('hidden');
+  });
+}
+
 function applyRole(){
   /* Set label */
   const lbl=document.getElementById('tbr-lbl');
@@ -2415,7 +2438,7 @@ function initAgent(){
     `<span class="agent-chip" onclick="askAgent('${c}')">${c}</span>`
   ).join('');
 
-  addAgentMsg('bot', `Hi! I'm your GCC Project Agent. I have full visibility into all your programme data — workstreams, tasks, RAG status, risks, and progress.\n\nAsk me anything about **${state.programmes.map(p=>p.name).join(', ')}**.`);
+  addAgentMsg('bot', `Hi! I'm your GCC Project Agent powered by **Google Gemini** (free). I have full visibility into all your programme data — workstreams, tasks, RAG status, risks, and progress.\n\nAsk me anything about **${state.programmes.map(p=>p.name).join(', ')}**.`);
 }
 
 function addAgentMsg(role, text){
@@ -2527,36 +2550,57 @@ ${context}`;
 
   _agentHistory.push({role:'user', content: question});
 
+  /* Get Gemini API key — FREE, no credit card needed
+     Get yours at: aistudio.google.com/apikey */
+  let apiKey = localStorage.getItem('gcc_gemini_key') || '';
+  if(!apiKey){
+    apiKey = prompt('Enter your FREE Google Gemini API key:\n\n1. Go to aistudio.google.com/apikey\n2. Click "Create API key"\n3. Copy and paste it here\n\n(100% free, no credit card needed)', '');
+    if(!apiKey){hideTyping();addAgentMsg('bot','API key needed. Get your FREE key at aistudio.google.com/apikey — no credit card required!');return;}
+    localStorage.setItem('gcc_gemini_key', apiKey);
+  }
+
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  
+  /* Build messages for Gemini format */
+  const geminiMessages = _agentHistory.slice(-6).map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{text: m.content}]
+  }));
+
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch(geminiUrl, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: _agentHistory.slice(-6) /* last 3 turns */
+        system_instruction: {parts: [{text: systemPrompt}]},
+        contents: geminiMessages,
+        generationConfig: {maxOutputTokens: 1000, temperature: 0.3}
       })
     });
 
     const data = await response.json();
     hideTyping();
 
-    if(data.content && data.content[0]){
-      const reply = data.content[0].text;
+    if(response.status === 400 || response.status === 401 || response.status === 403){
+      localStorage.removeItem('gcc_gemini_key');
+      const errMsg = data?.error?.message || 'Invalid key';
+      addAgentMsg('bot', `API key error: ${errMsg}\n\nKey cleared. Click any question to enter a new one.\nGet free key at aistudio.google.com/apikey`);
+      document.getElementById('agent-status-lbl').textContent = 'Key error — cleared';
+      return;
+    }
+
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if(reply){
       _agentHistory.push({role:'assistant', content: reply});
       addAgentMsg('bot', reply);
-      document.getElementById('agent-status-lbl').textContent = 'Powered by Claude AI';
-
-      /* Update chips with follow-ups */
-      const followUps = ['Tell me more', 'What\'s the risk?', 'Who owns this?', 'When is it due?', 'Overall status?'];
+      document.getElementById('agent-status-lbl').textContent = 'Powered by Gemini AI · Free';
+      const followUps = ['Tell me more', "What's the risk?", 'Who owns this?', 'When is it due?', 'Overall status?'];
       document.getElementById('agent-chips').innerHTML = followUps.map(c=>
         `<span class="agent-chip" onclick="askAgent('${c}')">${c}</span>`
       ).join('');
     } else {
-      hideTyping();
-      addAgentMsg('bot', 'Sorry, I couldn\'t get a response. Please try again.');
-      document.getElementById('agent-status-lbl').textContent = 'Powered by Claude AI';
+      addAgentMsg('bot', 'No response received. Please try again.');
+      document.getElementById('agent-status-lbl').textContent = 'Powered by Gemini AI · Free';
     }
   } catch(e) {
     hideTyping();
@@ -2588,10 +2632,11 @@ initComments();
         <div class="agent-avatar">✦</div>
         <div>
           <div class="agent-name">GCC Project Agent</div>
-          <div class="agent-status" id="agent-status-lbl">Powered by Claude AI</div>
+          <div class="agent-status" id="agent-status-lbl">Powered by Gemini AI · Free</div>
         </div>
       </div>
       <button class="agent-close" onclick="toggleAgent()">×</button>
+      <button onclick="localStorage.removeItem('gcc_gemini_key');alert('API key cleared. Enter new key on next question.');" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:10px;margin-right:4px" title="Change API key"><i class="ti ti-key" style="font-size:12px"></i></button>
     </div>
     <div class="agent-msgs" id="agent-msgs"></div>
     <div class="agent-suggestions" id="agent-chips"></div>
