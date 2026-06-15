@@ -350,7 +350,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 }
 
 </style>
-<!-- v:20260615085932 -->
+<!-- v:20260615092948 -->
 </head>
 <body>
 
@@ -2553,9 +2553,19 @@ ${context}`;
   /* Get Gemini API key — FREE, no credit card needed
      Get yours at: aistudio.google.com/apikey */
   let apiKey = localStorage.getItem('gcc_gemini_key') || '';
+  /* Clear invalid keys automatically */
+  if(apiKey && !apiKey.startsWith('AIza')){
+    localStorage.removeItem('gcc_gemini_key');
+    apiKey = '';
+  }
   if(!apiKey){
-    apiKey = prompt('Enter your FREE Google Gemini API key:\n\n1. Go to aistudio.google.com/apikey\n2. Click "Create API key"\n3. Copy and paste it here\n\n(100% free, no credit card needed)', '');
-    if(!apiKey){hideTyping();addAgentMsg('bot','API key needed. Get your FREE key at aistudio.google.com/apikey — no credit card required!');return;}
+    apiKey = prompt('Paste your FREE Google Gemini API key:\n(Must start with AIza...)\n\nGet free key at aistudio.google.com/apikey\n→ Click "Create API key" → Copy it', '');
+    if(!apiKey){hideTyping();addAgentMsg('bot','Key needed. Click 🔑 Change key below or ask any question to enter your Gemini key.\n\nGet free key at: aistudio.google.com/apikey');return;}
+    if(!apiKey.startsWith('AIza')){
+      hideTyping();
+      addAgentMsg('bot', `That key looks wrong — Gemini keys start with "AIza".\n\nYou entered: ${apiKey.slice(0,10)}...\n\nGo to aistudio.google.com/apikey and create a fresh key.`);
+      return;
+    }
     localStorage.setItem('gcc_gemini_key', apiKey);
   }
 
@@ -2581,11 +2591,18 @@ ${context}`;
     const data = await response.json();
     hideTyping();
 
-    if(response.status === 400 || response.status === 401 || response.status === 403){
-      localStorage.removeItem('gcc_gemini_key');
-      const errMsg = data?.error?.message || 'Invalid key';
-      addAgentMsg('bot', `API key error: ${errMsg}\n\nKey cleared. Click any question to enter a new one.\nGet free key at aistudio.google.com/apikey`);
-      document.getElementById('agent-status-lbl').textContent = 'Key error — cleared';
+    if(!response.ok){
+      const errMsg = data?.error?.message || `HTTP ${response.status}`;
+      /* Show specific error to help diagnose */
+      if(response.status===400) {
+        addAgentMsg('bot', `❌ Bad request: ${errMsg}\n\nMake sure your Gemini key starts with "AIza". Get a free key at aistudio.google.com/apikey`);
+      } else if(response.status===403){
+        localStorage.removeItem('gcc_gemini_key');
+        addAgentMsg('bot', `❌ Invalid API key.\n\n1. Go to aistudio.google.com/apikey\n2. Create a new key (starts with AIza...)\n3. Click any question below to enter it`);
+      } else {
+        addAgentMsg('bot', `❌ Error ${response.status}: ${errMsg}`);
+      }
+      document.getElementById('agent-status-lbl').textContent = 'Error';
       return;
     }
 
@@ -2599,12 +2616,11 @@ ${context}`;
         `<span class="agent-chip" onclick="askAgent('${c}')">${c}</span>`
       ).join('');
     } else {
-      addAgentMsg('bot', 'No response received. Please try again.');
-      document.getElementById('agent-status-lbl').textContent = 'Powered by Gemini AI · Free';
+      addAgentMsg('bot', `No response. Raw: ${JSON.stringify(data).slice(0,200)}`);
     }
   } catch(e) {
     hideTyping();
-    addAgentMsg('bot', 'Connection error. Check your internet and try again.');
+    addAgentMsg('bot', `Connection error: ${e.message}\n\nIf this persists, check browser console (F12) for details.`);
     document.getElementById('agent-status-lbl').textContent = 'Offline';
   }
 }
