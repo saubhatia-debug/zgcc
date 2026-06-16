@@ -394,7 +394,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 .doc-tab.act{background:var(--zinnov);color:#fff;border-color:var(--zinnov)}
 
 </style>
-<!-- v:20260616091343 -->
+<!-- v:20260616091835 -->
 </head>
 <body>
 
@@ -2608,49 +2608,30 @@ ${context}`;
 
   /* Get Gemini API key — FREE, no credit card needed
      Get yours at: aistudio.google.com/apikey */
-  let apiKey = localStorage.getItem('gcc_gemini_key') || '';
+  let apiKey = localStorage.getItem('gcc_ai_key') || '';
   if(!apiKey){
     apiKey = prompt('Paste your FREE OpenRouter API key:\n\n1. Go to openrouter.ai/keys\n2. Sign up free (Google/GitHub login)\n3. Click "Create Key"\n4. Copy and paste here\n\n(Free tier: 50 requests/day, no credit card)', '');
     if(!apiKey){hideTyping();addAgentMsg('bot','Key needed. Click 🔑 Change key below.\n\nGet free key at: aistudio.google.com/apikey');return;}
-    localStorage.setItem('gcc_gemini_key', apiKey); /* stored as gcc_gemini_key but now openrouter */
+    localStorage.setItem('gcc_ai_key', apiKey); /* stored as gcc_gemini_key but now openrouter */
   }
 
   /* OpenRouter API — free tier, browser compatible, no credit card */
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://saubhatia-debug.github.io/zgcc/',
-        'X-Title': 'GCC Command Center'
-      },
-      body: JSON.stringify({
-        model: 'openrouter/free',
-        messages: [
-          {role:'system', content: systemPrompt},
-          ..._agentHistory.slice(-6)
-        ],
-        max_tokens: 1000
-      })
-    });
-
-    const data = await response.json();
+    const geminiResult = await callGeminiChat(systemPrompt, _agentHistory.slice(-6));
     hideTyping();
 
-    if(!response.ok){
-      const errMsg = data?.error?.message || `HTTP ${response.status}`;
-      if(response.status===401||response.status===403){
-        localStorage.removeItem('gcc_gemini_key');
-        addAgentMsg('bot', `❌ Invalid API key — cleared.\n\nGet a free OpenRouter key at openrouter.ai/keys\n→ Sign up free → Create key → Paste here\n\nClick any question to enter new key.`);
+    if(geminiResult.error){
+      if(geminiResult.error.includes('401')||geminiResult.error.includes('403')||geminiResult.error==='No API key'){
+        localStorage.removeItem('gcc_ai_key');
+        addAgentMsg('bot', '❌ Invalid or missing API key.\n\nGet your free key at aistudio.google.com/apikey\n→ Create API Key → paste in the dashboard');
       } else {
-        addAgentMsg('bot', `❌ Error ${response.status}: ${errMsg}`);
+        addAgentMsg('bot', `❌ Error: ${geminiResult.error}`);
       }
       document.getElementById('agent-status-lbl').textContent = 'Error';
       return;
     }
 
-    const reply = data?.choices?.[0]?.message?.content;
+    const reply = geminiResult.text;
     if(reply){
       _agentHistory.push({role:'assistant', content: reply});
       addAgentMsg('bot', reply);
@@ -2755,12 +2736,8 @@ async function parseTeamUpdates(progId){
     })))
   );
 
-  let apiKey = localStorage.getItem('gcc_gemini_key')||'';
-  if(!apiKey){
-    apiKey = prompt('Enter your OpenRouter API key (openrouter.ai/keys):','');
-    if(!apiKey)return;
-    localStorage.setItem('gcc_gemini_key',apiKey);
-  }
+  /* key handled by callGemini */
+  const sowStatusEl = document.getElementById('sow-status');
 
   const systemPrompt = `You are a project management assistant. Extract task updates from team messages and match them to existing tasks.
 
@@ -2788,25 +2765,13 @@ Rules:
 Return only the JSON array, no other text.`;
 
   try {
-    const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':`Bearer ${apiKey}`,
-        'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/',
-        'X-Title':'GCC Command Center'
-      },
-      body:JSON.stringify({
-        model:'openrouter/free',
-        messages:[
-          {role:'system',content:systemPrompt},
-          {role:'user',content:`Extract updates from:\n${text}`}
-        ],
-        max_tokens:1000
-      })
-    });
-    const d = await r.json();
-    const raw = d?.choices?.[0]?.message?.content||'[]';
+    const gr = await callGemini(systemPrompt, 'Extract updates from:\n'+text);
+    if(gr.error){
+      if(statusEl) statusEl.textContent='Error: '+gr.error;
+      showToast('AI parse failed: '+gr.error);
+      return;
+    }
+    const raw = gr.text||'[]';
     const updates = JSON.parse(raw.replace(/```json|```/g,'').trim());
     
     /* Add progId to each update */
@@ -2930,14 +2895,14 @@ async function parseSow(progId){
   const text = document.getElementById('sow-input')?.value.trim();
   if(!text){showToast('Please paste your SOW first');return;}
   
-  const statusEl = document.getElementById('sow-status');
-  if(statusEl) statusEl.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generating project plan...';
+  const statusEl2 = document.getElementById('sow-status');
+  if(statusEl2) statusEl2.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generating project plan...';
 
-  let apiKey = localStorage.getItem('gcc_gemini_key')||'';
+  let apiKey = localStorage.getItem('gcc_ai_key')||'';
   if(!apiKey){
     apiKey = prompt('Enter your OpenRouter API key (openrouter.ai/keys):','');
     if(!apiKey)return;
-    localStorage.setItem('gcc_gemini_key',apiKey);
+    localStorage.setItem('gcc_ai_key',apiKey);
   }
 
   const systemPrompt = `You are a GCC (Global Capability Centre) project planning expert. 
@@ -2977,33 +2942,17 @@ Rules:
 - Return ONLY the JSON, no other text`;
 
   try {
-    const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':`Bearer ${apiKey}`,
-        'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/',
-        'X-Title':'GCC Command Center'
-      },
-      body:JSON.stringify({
-        model:'openrouter/free',
-        messages:[
-          {role:'system',content:systemPrompt},
-          {role:'user',content:`Generate project plan from this SOW:\n${text}`}
-        ],
-        max_tokens:3000
-      })
-    });
-    const d = await r.json();
-    const raw = d?.choices?.[0]?.message?.content||'{}';
+    const gr2 = await callGemini(systemPrompt, 'Generate project plan from this SOW:\n'+text);
+    if(gr2.error){if(statusEl)sowStatusEl.textContent='Error: '+gr2.error;return;}
+    const raw = gr2.text||'{}';
     _sowPreview = JSON.parse(raw.replace(/```json|```/g,'').trim());
-    if(statusEl) statusEl.innerHTML = '';
+    if(statusEl) sowStatusEl.innerHTML = '';
     const prog = state.programmes.find(p=>p.id===progId);
     const el = document.getElementById('spane-sowimport');
     if(el&&prog) el.innerHTML = renderSowPane(prog);
     showToast('Project plan generated — review and apply');
   } catch(e){
-    if(statusEl) statusEl.textContent = 'Error: '+e.message;
+    if(statusEl) sowStatusEl.textContent = 'Error: '+e.message;
     showToast('Generation failed — check your API key');
   }
 }
@@ -3232,11 +3181,11 @@ async function extractFromDoc(progId){
   const statusEl = document.getElementById('doc-status');
   if(statusEl) statusEl.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Extracting with AI...';
 
-  let apiKey = localStorage.getItem('gcc_gemini_key')||'';
+  let apiKey = localStorage.getItem('gcc_ai_key')||'';
   if(!apiKey){
     apiKey = prompt('Enter your OpenRouter API key (openrouter.ai/keys):','');
     if(!apiKey)return;
-    localStorage.setItem('gcc_gemini_key',apiKey);
+    localStorage.setItem('gcc_ai_key',apiKey);
   }
 
   const prog = state.programmes.find(p=>p.id===progId);
@@ -3459,32 +3408,124 @@ function renderAIImportPane(prog){
   </div>`;
 }
 
-function renderAIKeyBar(){
-  const k=localStorage.getItem('gcc_gemini_key')||'';
-  if(k.length>10){
-    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--green-bg);border:1px solid var(--green-bg);border-radius:var(--radius);margin-bottom:14px;font-size:11px;color:var(--green)">
-      <i class="ti ti-circle-check"></i>
-      <span>OpenRouter connected · <strong>${k.slice(0,14)}...</strong></span>
-      <button onclick="clearAIKey()" style="margin-left:auto;padding:2px 8px;background:none;border:1px solid var(--green);border-radius:20px;font-size:10px;cursor:pointer;color:var(--green);font-family:'DM Sans',sans-serif">Change key</button>
-    </div>`;
+
+/* ─── GOOGLE GEMINI API (free, supports vision) ─── */
+async function callGemini(systemPrompt, userContent, isImageContent=false){
+  const key = localStorage.getItem('gcc_ai_key')||'';
+  if(!key || key.length < 10) return {error:'No API key'};
+  
+  /* Build request body for Gemini */
+  let parts = [];
+  if(isImageContent && isImageContent.base64 && isImageContent.mime){
+    parts = [
+      {text: userContent},
+      {inline_data:{mime_type: isImageContent.mime, data: isImageContent.base64}}
+    ];
+  } else {
+    parts = [{text: userContent}];
   }
-  return `<div style="padding:10px 12px;background:#FEF3CD;border:1px solid #F5C842;border-radius:var(--radius);margin-bottom:14px">
-    <div style="font-size:11px;font-weight:600;color:#92650A;margin-bottom:6px"><i class="ti ti-key" style="font-size:12px;margin-right:4px"></i>OpenRouter API key required — free, no credit card</div>
-    <div style="display:flex;gap:6px;align-items:center">
-      <input id="ai-key-input" type="password" placeholder="Paste your key from openrouter.ai/keys"
-        style="flex:1;padding:6px 9px;border:1px solid #F5C842;border-radius:var(--radius);font-size:11px;font-family:'DM Sans',sans-serif;background:#fff">
-      <button onclick="saveAIKey()" style="padding:6px 12px;background:#92650A;color:#fff;border:none;border-radius:var(--radius);font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap">Save</button>
+
+  const body = {
+    system_instruction:{parts:[{text:systemPrompt}]},
+    contents:[{role:'user', parts}],
+    generationConfig:{maxOutputTokens:2000, temperature:0.3}
+  };
+
+  /* Try API key first, then OAuth Bearer */
+  const isOAuth = key.startsWith('AQ') || key.startsWith('ya29') || key.includes('.');
+  const url = isOAuth
+    ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+  const headers = {'Content-Type':'application/json'};
+  if(isOAuth) headers['Authorization'] = `Bearer ${key}`;
+
+  try {
+    const r = await fetch(url, {method:'POST', headers, body:JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) return {error: d?.error?.message || `HTTP ${r.status}`};
+    const text = d?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return {text};
+  } catch(e){
+    return {error: e.message};
+  }
+}
+
+/* Chat format for agent (multi-turn) */
+async function callGeminiChat(systemPrompt, history){
+  const key = localStorage.getItem('gcc_ai_key')||'';
+  if(!key || key.length < 10) return {error:'No API key'};
+
+  const isOAuth = key.startsWith('AQ') || key.startsWith('ya29') || key.includes('.');
+  const url = isOAuth
+    ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+  const headers = {'Content-Type':'application/json'};
+  if(isOAuth) headers['Authorization'] = `Bearer ${key}`;
+
+  /* Convert OpenAI-style history to Gemini format */
+  const contents = history.map(m=>({
+    role: m.role==='assistant'?'model':'user',
+    parts:[{text:m.content}]
+  }));
+
+  const body = {
+    system_instruction:{parts:[{text:systemPrompt}]},
+    contents,
+    generationConfig:{maxOutputTokens:1000, temperature:0.3}
+  };
+
+  try {
+    const r = await fetch(url, {method:'POST', headers, body:JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) return {error: d?.error?.message || `HTTP ${r.status}`};
+    const text = d?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return {text};
+  } catch(e){
+    return {error: e.message};
+  }
+}
+
+function renderAIKeyBar(){
+  const k1=localStorage.getItem('gcc_gemini_key')||'';
+  const k2=localStorage.getItem('gcc_google_key')||'';
+  const hasT=k1.length>10, hasV=k2.length>10;
+  const textBox = hasT
+    ? `<div style="font-size:10px;color:var(--green)">${k1.slice(0,16)}... <button onclick="clearTextKey()" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:10px;text-decoration:underline;padding:0">change</button></div>`
+    : `<div style="display:flex;gap:5px"><input id="ai-text-key" type="password" placeholder="sk-or-... openrouter.ai/keys" style="flex:1;padding:5px 7px;border:1px solid #F5C842;border-radius:4px;font-size:10px;background:#fff;font-family:'DM Sans',sans-serif"><button onclick="saveTextKey()" style="padding:5px 9px;background:#92650A;color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer">Save</button></div>`;
+  const visionBox = hasV
+    ? `<div style="font-size:10px;color:var(--green)">${k2.slice(0,16)}... <button onclick="clearVisionKey()" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:10px;text-decoration:underline;padding:0">change</button></div>`
+    : `<div style="display:flex;gap:5px"><input id="ai-vision-key" type="password" placeholder="AQ... aistudio.google.com/apikey" style="flex:1;padding:5px 7px;border:1px solid var(--border2);border-radius:4px;font-size:10px;background:#fff;font-family:'DM Sans',sans-serif"><button onclick="saveVisionKey()" style="padding:5px 9px;background:var(--zinnov);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer">Save</button></div>`;
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+    <div style="padding:9px 10px;border-radius:var(--radius);border:1px solid ${hasT?'var(--green-bg)':'#F5C842'};background:${hasT?'var(--green-bg)':'#FEF3CD'}">
+      <div style="font-size:10px;font-weight:600;color:${hasT?'var(--green)':'#92650A'};margin-bottom:5px">
+        <i class="ti ti-${hasT?'circle-check':'key'}" style="font-size:11px;margin-right:3px"></i>Text AI · OpenRouter ${hasT?'✓':'— required'}
+      </div>${textBox}
     </div>
-    <div style="font-size:10px;color:#92650A;margin-top:5px">Go to <strong>openrouter.ai/keys</strong> → sign up free with Google → Create Key → paste above</div>
+    <div style="padding:9px 10px;border-radius:var(--radius);border:1px solid ${hasV?'var(--green-bg)':'var(--border2)'};background:${hasV?'var(--green-bg)':'var(--surface2)'}">
+      <div style="font-size:10px;font-weight:600;color:${hasV?'var(--green)':'var(--text2)'};margin-bottom:5px">
+        <i class="ti ti-${hasV?'circle-check':'photo'}" style="font-size:11px;margin-right:3px"></i>Image AI · Google Studio ${hasV?'✓':'— for images'}
+      </div>${visionBox}
+    </div>
   </div>`;
 }
-function clearAIKey(){localStorage.removeItem('gcc_gemini_key');renderAll();showToast('Key cleared');}
+function clearTextKey(){localStorage.removeItem('gcc_gemini_key');renderAll();showToast('Text key cleared');}
+function clearVisionKey(){localStorage.removeItem('gcc_google_key');renderAll();showToast('Vision key cleared');}
+function saveTextKey(){const k=(document.getElementById('ai-text-key')?.value||'').trim();if(k.length<10){showToast('Key too short');return;}localStorage.setItem('gcc_gemini_key',k);showToast('Text key saved!');renderAll();}
+function saveVisionKey(){const k=(document.getElementById('ai-vision-key')?.value||'').trim();if(k.length<10){showToast('Key too short');return;}localStorage.setItem('gcc_google_key',k);showToast('Vision key saved!');renderAll();}
+
+function saveAIKey(){
+  const k=(document.getElementById('ai-text-key')?.value||document.getElementById('ai-key-input')?.value||'').trim();
+  if(k.length<10){showToast('Key too short');return;}
+  localStorage.setItem('gcc_gemini_key',k);showToast('Key saved!');renderAll();
+}
+
+function clearAIKey(){localStorage.removeItem('gcc_ai_key');renderAll();showToast('Key cleared');}
 
 function saveAIKey(){
   const k = (document.getElementById('ai-key-input')?.value||'').trim();
   if(!k){showToast('Please paste your key first');return;}
   if(k.length < 10){showToast('Key looks too short — check and try again');return;}
-  localStorage.setItem('gcc_gemini_key', k);
+  localStorage.setItem('gcc_ai_key', k);
   showToast('Key saved!');
   renderAll();
 }
@@ -3553,10 +3594,10 @@ async function runAIImport(progId, source){
     content = `File: ${_docFile?.name}`;
   }
 
-  const apiKey = localStorage.getItem('gcc_gemini_key')||'';
+  const apiKey = localStorage.getItem('gcc_ai_key')||'';
   if(!apiKey || apiKey.length < 10){
     const statusEl2 = document.getElementById('ai-import-status');
-    if(statusEl2) statusEl2.innerHTML = '<span style="color:#92650A">⚠ No API key — enter your OpenRouter key above first</span>';
+    if(statusEl2) statusEl2.innerHTML = '<span style="color:#92650A">⚠ No API key — enter your Google AI Studio key above first</span>';
     return;
   }
 
@@ -3604,18 +3645,17 @@ async function runAIImport(progId, source){
   }
 
   try{
-    const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`,'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/','X-Title':'GCC Command Center'},
-      body:JSON.stringify({model:'openrouter/free',messages:[{role:'system',content:p.system},...messages],max_tokens:2000})
-    });
-    const d = await r.json();
-    if(statusEl) statusEl.innerHTML = '';
-    if(!r.ok){
-      if(statusEl) statusEl.innerHTML = `<span style="color:#E24B4A">❌ ${d?.error?.message||'API error'}</span>`;
+    /* Pass image data if file upload with image */
+    const imgData = (source==='file' && isImage) ? {base64:_docBase64, mime:_docMime} : null;
+    const userMsg = messages[0]?.content;
+    const userText = Array.isArray(userMsg) ? userMsg[0]?.text : (typeof userMsg==='string'?userMsg:p.user);
+    const gr = await callGemini(p.system, userText, imgData);
+    if(statusEl) statusEl.innerHTML='';
+    if(gr.error){
+      if(statusEl) statusEl.innerHTML=`<span style="color:#E24B4A">❌ ${gr.error}</span>`;
       return;
     }
-    const reply = d?.choices?.[0]?.message?.content||'';
+    const reply = gr.text||'';
 
     if(_docExtractMode==='tasks'){
       try{
@@ -3705,7 +3745,7 @@ initComments();
         </div>
       </div>
       <button class="agent-close" onclick="toggleAgent()">×</button>
-      <button onclick="localStorage.removeItem('gcc_gemini_key');alert('API key cleared. Enter new key on next question.');" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:10px;margin-right:4px" title="Change API key"><i class="ti ti-key" style="font-size:12px"></i></button>
+      <button onclick="localStorage.removeItem('gcc_ai_key');alert('API key cleared. Enter new key on next question.');" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:10px;margin-right:4px" title="Change API key"><i class="ti ti-key" style="font-size:12px"></i></button>
     </div>
     <div class="agent-msgs" id="agent-msgs"></div>
     <div class="agent-suggestions" id="agent-chips"></div>
