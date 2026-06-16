@@ -394,7 +394,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 .doc-tab.act{background:var(--zinnov);color:#fff;border-color:var(--zinnov)}
 
 </style>
-<!-- v:20260616091835 -->
+<!-- v:20260616092247 -->
 </head>
 <body>
 
@@ -2608,11 +2608,11 @@ ${context}`;
 
   /* Get Gemini API key — FREE, no credit card needed
      Get yours at: aistudio.google.com/apikey */
-  let apiKey = localStorage.getItem('gcc_ai_key') || '';
+  let apiKey = localStorage.getItem('gcc_gemini_key')||localStorage.getItem('gcc_google_key') || '';
   if(!apiKey){
     apiKey = prompt('Paste your FREE OpenRouter API key:\n\n1. Go to openrouter.ai/keys\n2. Sign up free (Google/GitHub login)\n3. Click "Create Key"\n4. Copy and paste here\n\n(Free tier: 50 requests/day, no credit card)', '');
     if(!apiKey){hideTyping();addAgentMsg('bot','Key needed. Click 🔑 Change key below.\n\nGet free key at: aistudio.google.com/apikey');return;}
-    localStorage.setItem('gcc_ai_key', apiKey); /* stored as gcc_gemini_key but now openrouter */
+    localStorage.setItem('gcc_google_key', apiKey); /* stored as gcc_gemini_key but now openrouter */
   }
 
   /* OpenRouter API — free tier, browser compatible, no credit card */
@@ -2622,7 +2622,7 @@ ${context}`;
 
     if(geminiResult.error){
       if(geminiResult.error.includes('401')||geminiResult.error.includes('403')||geminiResult.error==='No API key'){
-        localStorage.removeItem('gcc_ai_key');
+        localStorage.removeItem('gcc_google_key');localStorage.removeItem('gcc_gemini_key');
         addAgentMsg('bot', '❌ Invalid or missing API key.\n\nGet your free key at aistudio.google.com/apikey\n→ Create API Key → paste in the dashboard');
       } else {
         addAgentMsg('bot', `❌ Error: ${geminiResult.error}`);
@@ -2898,11 +2898,11 @@ async function parseSow(progId){
   const statusEl2 = document.getElementById('sow-status');
   if(statusEl2) statusEl2.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generating project plan...';
 
-  let apiKey = localStorage.getItem('gcc_ai_key')||'';
+  let apiKey = localStorage.getItem('gcc_gemini_key')||localStorage.getItem('gcc_google_key')||'';
   if(!apiKey){
     apiKey = prompt('Enter your OpenRouter API key (openrouter.ai/keys):','');
     if(!apiKey)return;
-    localStorage.setItem('gcc_ai_key',apiKey);
+    localStorage.setItem('gcc_google_key',apiKey);
   }
 
   const systemPrompt = `You are a GCC (Global Capability Centre) project planning expert. 
@@ -3181,11 +3181,11 @@ async function extractFromDoc(progId){
   const statusEl = document.getElementById('doc-status');
   if(statusEl) statusEl.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Extracting with AI...';
 
-  let apiKey = localStorage.getItem('gcc_ai_key')||'';
+  let apiKey = localStorage.getItem('gcc_gemini_key')||localStorage.getItem('gcc_google_key')||'';
   if(!apiKey){
     apiKey = prompt('Enter your OpenRouter API key (openrouter.ai/keys):','');
     if(!apiKey)return;
-    localStorage.setItem('gcc_ai_key',apiKey);
+    localStorage.setItem('gcc_google_key',apiKey);
   }
 
   const prog = state.programmes.find(p=>p.id===progId);
@@ -3411,7 +3411,8 @@ function renderAIImportPane(prog){
 
 /* ─── GOOGLE GEMINI API (free, supports vision) ─── */
 async function callGemini(systemPrompt, userContent, isImageContent=false){
-  const key = localStorage.getItem('gcc_ai_key')||'';
+  const isImg = isImageContent && isImageContent.base64;
+  const key = isImg ? (localStorage.getItem('gcc_google_key')||'') : (localStorage.getItem('gcc_gemini_key')||localStorage.getItem('gcc_google_key')||'');
   if(!key || key.length < 10) return {error:'No API key'};
   
   /* Build request body for Gemini */
@@ -3452,7 +3453,7 @@ async function callGemini(systemPrompt, userContent, isImageContent=false){
 
 /* Chat format for agent (multi-turn) */
 async function callGeminiChat(systemPrompt, history){
-  const key = localStorage.getItem('gcc_ai_key')||'';
+  const key = localStorage.getItem('gcc_gemini_key')||localStorage.getItem('gcc_google_key')||'';
   if(!key || key.length < 10) return {error:'No API key'};
 
   const isOAuth = key.startsWith('AQ') || key.startsWith('ya29') || key.includes('.');
@@ -3519,13 +3520,13 @@ function saveAIKey(){
   localStorage.setItem('gcc_gemini_key',k);showToast('Key saved!');renderAll();
 }
 
-function clearAIKey(){localStorage.removeItem('gcc_ai_key');renderAll();showToast('Key cleared');}
+function clearAIKey(){localStorage.removeItem('gcc_google_key');localStorage.removeItem('gcc_gemini_key');renderAll();showToast('Key cleared');}
 
 function saveAIKey(){
   const k = (document.getElementById('ai-key-input')?.value||'').trim();
   if(!k){showToast('Please paste your key first');return;}
   if(k.length < 10){showToast('Key looks too short — check and try again');return;}
-  localStorage.setItem('gcc_ai_key', k);
+  localStorage.setItem('gcc_google_key', k);
   showToast('Key saved!');
   renderAll();
 }
@@ -3594,10 +3595,16 @@ async function runAIImport(progId, source){
     content = `File: ${_docFile?.name}`;
   }
 
-  const apiKey = localStorage.getItem('gcc_ai_key')||'';
+  const useGoogle = source==='file' && isImage;
+  const apiKey = useGoogle
+    ? localStorage.getItem('gcc_google_key')||''
+    : localStorage.getItem('gcc_gemini_key')||'';
+
   if(!apiKey || apiKey.length < 10){
     const statusEl2 = document.getElementById('ai-import-status');
-    if(statusEl2) statusEl2.innerHTML = '<span style="color:#92650A">⚠ No API key — enter your Google AI Studio key above first</span>';
+    if(statusEl2) statusEl2.innerHTML = useGoogle
+      ? '<span style="color:#92650A">⚠ Enter your Google AI Studio key above (AQ... key) for image extraction</span>'
+      : '<span style="color:#92650A">⚠ Enter your OpenRouter key above (sk-or-... key) for text extraction</span>';
     return;
   }
 
@@ -3745,7 +3752,7 @@ initComments();
         </div>
       </div>
       <button class="agent-close" onclick="toggleAgent()">×</button>
-      <button onclick="localStorage.removeItem('gcc_ai_key');alert('API key cleared. Enter new key on next question.');" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:10px;margin-right:4px" title="Change API key"><i class="ti ti-key" style="font-size:12px"></i></button>
+      <button onclick="localStorage.removeItem('gcc_google_key');localStorage.removeItem('gcc_gemini_key');alert('API key cleared. Enter new key on next question.');" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:10px;margin-right:4px" title="Change API key"><i class="ti ti-key" style="font-size:12px"></i></button>
     </div>
     <div class="agent-msgs" id="agent-msgs"></div>
     <div class="agent-suggestions" id="agent-chips"></div>
