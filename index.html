@@ -394,7 +394,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 .doc-tab.act{background:var(--zinnov);color:#fff;border-color:var(--zinnov)}
 
 </style>
-<!-- v:20260616053037 -->
+<!-- v:20260616053919 -->
 </head>
 <body>
 
@@ -2626,7 +2626,7 @@ ${context}`;
         'X-Title': 'GCC Command Center'
       },
       body: JSON.stringify({
-        model: 'google/gemini-flash-1.5',
+        model: 'google/gemini-2.0-flash-001',
         messages: [
           {role:'system', content: systemPrompt},
           ..._agentHistory.slice(-6)
@@ -2797,7 +2797,7 @@ Return only the JSON array, no other text.`;
         'X-Title':'GCC Command Center'
       },
       body:JSON.stringify({
-        model:'google/gemini-flash-1.5',
+        model:'google/gemini-2.0-flash-001',
         messages:[
           {role:'system',content:systemPrompt},
           {role:'user',content:`Extract updates from:\n${text}`}
@@ -2986,7 +2986,7 @@ Rules:
         'X-Title':'GCC Command Center'
       },
       body:JSON.stringify({
-        model:'google/gemini-flash-1.5',
+        model:'google/gemini-2.0-flash-001',
         messages:[
           {role:'system',content:systemPrompt},
           {role:'user',content:`Generate project plan from this SOW:\n${text}`}
@@ -3288,7 +3288,7 @@ async function extractFromDoc(progId){
         'X-Title':'GCC Command Center'
       },
       body:JSON.stringify({
-        model: isImage ? 'google/gemini-flash-1.5' : 'google/gemini-flash-1.5',
+        model: isImage ? 'google/gemini-2.0-flash-001' : 'google/gemini-2.0-flash-001',
         messages:[{role:'system',content:systemPrompt},...messages],
         max_tokens:2000
       })
@@ -3385,6 +3385,8 @@ function renderAIImportPane(prog){
       <div style="font-size:11px;color:var(--text3)">Paste text or upload a file — AI extracts structured project data</div>
     </div>
 
+    ${renderAIKeyBar()}
+
     <!-- Mode selector -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
       ${['tasks','sow','summary'].map(m=>`
@@ -3457,6 +3459,36 @@ function renderAIImportPane(prog){
   </div>`;
 }
 
+function renderAIKeyBar(){
+  const k=localStorage.getItem('gcc_gemini_key')||'';
+  if(k.length>10){
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--green-bg);border:1px solid var(--green-bg);border-radius:var(--radius);margin-bottom:14px;font-size:11px;color:var(--green)">
+      <i class="ti ti-circle-check"></i>
+      <span>OpenRouter connected · <strong>${k.slice(0,14)}...</strong></span>
+      <button onclick="clearAIKey()" style="margin-left:auto;padding:2px 8px;background:none;border:1px solid var(--green);border-radius:20px;font-size:10px;cursor:pointer;color:var(--green);font-family:'DM Sans',sans-serif">Change key</button>
+    </div>`;
+  }
+  return `<div style="padding:10px 12px;background:#FEF3CD;border:1px solid #F5C842;border-radius:var(--radius);margin-bottom:14px">
+    <div style="font-size:11px;font-weight:600;color:#92650A;margin-bottom:6px"><i class="ti ti-key" style="font-size:12px;margin-right:4px"></i>OpenRouter API key required — free, no credit card</div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <input id="ai-key-input" type="password" placeholder="Paste your key from openrouter.ai/keys"
+        style="flex:1;padding:6px 9px;border:1px solid #F5C842;border-radius:var(--radius);font-size:11px;font-family:'DM Sans',sans-serif;background:#fff">
+      <button onclick="saveAIKey()" style="padding:6px 12px;background:#92650A;color:#fff;border:none;border-radius:var(--radius);font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap">Save</button>
+    </div>
+    <div style="font-size:10px;color:#92650A;margin-top:5px">Go to <strong>openrouter.ai/keys</strong> → sign up free with Google → Create Key → paste above</div>
+  </div>`;
+}
+function clearAIKey(){localStorage.removeItem('gcc_gemini_key');renderAll();showToast('Key cleared');}
+
+function saveAIKey(){
+  const k = (document.getElementById('ai-key-input')?.value||'').trim();
+  if(!k){showToast('Please paste your key first');return;}
+  if(k.length < 10){showToast('Key looks too short — check and try again');return;}
+  localStorage.setItem('gcc_gemini_key', k);
+  showToast('Key saved!');
+  renderAll();
+}
+
 function setAIImportMode(mode, progId){
   _docExtractMode = mode;
   const prog = state.programmes.find(p=>p.id===progId);
@@ -3521,11 +3553,11 @@ async function runAIImport(progId, source){
     content = `File: ${_docFile?.name}`;
   }
 
-  let apiKey = localStorage.getItem('gcc_gemini_key')||'';
-  if(!apiKey){
-    apiKey = prompt('Enter your OpenRouter API key (openrouter.ai/keys):','');
-    if(!apiKey)return;
-    localStorage.setItem('gcc_gemini_key',apiKey);
+  const apiKey = localStorage.getItem('gcc_gemini_key')||'';
+  if(!apiKey || apiKey.length < 10){
+    const statusEl2 = document.getElementById('ai-import-status');
+    if(statusEl2) statusEl2.innerHTML = '<span style="color:#92650A">⚠ No API key — enter your OpenRouter key above first</span>';
+    return;
   }
 
   const statusEl = document.getElementById('ai-import-status');
@@ -3565,7 +3597,7 @@ async function runAIImport(progId, source){
     const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`,'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/','X-Title':'GCC Command Center'},
-      body:JSON.stringify({model:'google/gemini-flash-1.5',messages:[{role:'system',content:p.system},...messages],max_tokens:2000})
+      body:JSON.stringify({model:'google/gemini-2.0-flash-001',messages:[{role:'system',content:p.system},...messages],max_tokens:2000})
     });
     const d = await r.json();
     if(statusEl) statusEl.innerHTML = '';
