@@ -349,8 +349,52 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
   .agent-panel{width:calc(100vw - 2rem);right:1rem;bottom:4.5rem}
 }
 
+
+/* ─── PASTE & PARSE PANEL ─── */
+.parse-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+.parse-textarea{width:100%;height:120px;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--surface);resize:vertical;line-height:1.6}
+.parse-textarea:focus{outline:none;border-color:var(--zinnov)}
+.parse-result{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+.parse-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:.65rem .9rem;display:flex;align-items:flex-start;gap:10px}
+.parse-item-info{flex:1;min-width:0}
+.parse-item-task{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.parse-item-meta{font-size:10px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap}
+.parse-item-actions{display:flex;gap:5px;flex-shrink:0}
+.parse-apply-btn{padding:4px 10px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bg);border-radius:var(--radius);font-size:10px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.parse-apply-btn:hover{opacity:.85}
+.parse-skip-btn{padding:4px 8px;background:none;color:var(--text3);border:1px solid var(--border2);border-radius:var(--radius);font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.parse-apply-all-btn{padding:6px 16px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
+/* ─── SOW PANEL ─── */
+.sow-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+.sow-preview{margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;max-height:300px;overflow-y:auto;font-size:11px;color:var(--text2);line-height:1.6}
+.sow-ws-item{padding:6px 0;border-bottom:1px solid var(--border)}
+.sow-ws-item:last-child{border-bottom:none}
+.sow-ws-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px}
+.sow-task-list{display:flex;flex-direction:column;gap:2px;padding-left:12px}
+.sow-task{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px}
+
+
+/* ─── DOCUMENT UPLOAD ─── */
+.doc-upload-zone{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:2rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface)}
+.doc-upload-zone:hover,.doc-upload-zone.drag-over{border-color:var(--zinnov);background:var(--blue-bg)}
+.doc-upload-icon{font-size:32px;color:var(--text3);margin-bottom:8px}
+.doc-upload-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px}
+.doc-upload-sub{font-size:11px;color:var(--text3)}
+.doc-preview-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;margin-top:12px}
+.doc-preview-img{max-width:100%;max-height:200px;border-radius:var(--radius);margin-bottom:10px;display:block}
+.doc-file-info{display:flex;align-items:center;gap:8px;padding:.65rem .85rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px}
+.doc-file-icon{font-size:20px;color:var(--blue)}
+.doc-file-name{font-size:12px;font-weight:500;color:var(--text);flex:1}
+.doc-file-size{font-size:10px;color:var(--text3)}
+.doc-extract-btn{padding:7px 16px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px}
+.doc-extract-btn:hover{opacity:.88}
+.doc-result{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;margin-top:10px;font-size:12px;color:var(--text2);line-height:1.6;white-space:pre-wrap}
+.doc-tabs{display:flex;gap:6px;margin-bottom:12px}
+.doc-tab{padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;font-size:11px;color:var(--text2);font-family:'DM Sans',sans-serif}
+.doc-tab.act{background:var(--zinnov);color:#fff;border-color:var(--zinnov)}
+
 </style>
-<!-- v:20260615094850 -->
+<!-- v:20260616052020 -->
 </head>
 <body>
 
@@ -845,6 +889,9 @@ function renderMain(){
       <button class="stab${sp==='overview'?' active':''}" onclick="switchSPane('overview',this,'${prog.id}')"><i class="ti ti-layout-dashboard" style="font-size:12px;margin-right:3px"></i>Overview</button>
       <button class="stab${sp==='plan'?' active':''}" onclick="switchSPane('plan',this,'${prog.id}')"><i class="ti ti-list-check" style="font-size:12px;margin-right:3px"></i>Project Plan</button>
       <button class="stab${sp==='alerts'?' active':''}" onclick="switchSPane('alerts',this,'${prog.id}')"><i class="ti ti-alert-triangle" style="font-size:12px;margin-right:3px"></i>Alerts</button>
+      <button class="stab viewer-hidden-tab${sp==='teamupdates'?' active':''}" onclick="switchSPane('teamupdates',this,'${prog.id}')"><i class="ti ti-message-forward" style="font-size:12px;margin-right:3px"></i>Team Updates${_pendingUpdates.length>0?`<span style="background:#E24B4A;color:#fff;border-radius:10px;font-size:9px;padding:0 4px;margin-left:4px;line-height:14px;display:inline-block">${_pendingUpdates.length}</span>`:''}</button>
+      <button class="stab viewer-hidden-tab${sp==='sowimport'?' active':''}" onclick="switchSPane('sowimport',this,'${prog.id}')"><i class="ti ti-file-import" style="font-size:12px;margin-right:3px"></i>SOW Import</button>
+      <button class="stab viewer-hidden-tab${sp==='docupload'?' active':''}" onclick="switchSPane('docupload',this,'${prog.id}')"><i class="ti ti-file-upload" style="font-size:12px;margin-right:3px"></i>Documents</button>
       <button class="stab viewer-hidden-tab${sp==='comments'?' active':''}" onclick="switchSPane('comments',this,'${prog.id}')"><i class="ti ti-message-circle" style="font-size:12px;margin-right:3px"></i>Comments${cAll().filter(c=>c.progId===prog.id&&!c.resolved).length>0?`<span style="background:#E24B4A;color:#fff;border-radius:10px;font-size:9px;padding:0 4px;margin-left:4px;line-height:14px;display:inline-block">${cAll().filter(c=>c.progId===prog.id&&!c.resolved).length}</span>`:''}</button>
       <button class="stab viewer-hidden-tab${sp==='audit'?' active':''}" onclick="switchSPane('audit',this,'${prog.id}')"><i class="ti ti-history" style="font-size:12px;margin-right:3px"></i>Audit History</button>
       <button class="stab viewer-hidden-tab${sp==='import'?' active':''}" onclick="switchSPane('import',this,'${prog.id}')"><i class="ti ti-upload" style="font-size:12px;margin-right:3px"></i>Import Excel</button>
@@ -874,7 +921,19 @@ function renderMain(){
       <div>${renderAlerts(prog)}</div>
     </div>
 
-    <div id="spane-comments" class="spane${sp==='comments'?' active':''}">
+    <div id="spane-teamupdates" class="spane${sp==='teamupdates'?' active':''}">
+      ${renderTeamUpdatesPane(prog)}
+    </div>
+
+    <div id="spane-sowimport" class="spane${sp==='sowimport'?' active':''}">
+      ${renderSowPane(prog)}
+    </div>
+
+    <div id="spane-docupload" class="spane${sp==='docupload'?' active':''}">
+      ${renderDocUploadPane(prog)}
+    </div>
+
+    <div id="spane-comments"   class="spane${sp==='comments'?' active':''}">
       <div id="cos-comments-pane">${renderProgComments(prog)}</div>
     </div>
 
@@ -1110,6 +1169,9 @@ function switchSPane(name,btn,progId){
     if(name==='audit'){el.innerHTML=renderAuditPane(progId);}
     if(name==='alerts'){el.innerHTML='<div class="slabel" style="margin-bottom:10px">Off track &amp; at-risk items — turn these green</div>'+renderAlerts(prog);}
     if(name==='comments'){el.innerHTML='<div id="cos-comments-pane">'+renderProgComments(prog)+'</div>';}
+    if(name==='teamupdates'){el.innerHTML=renderTeamUpdatesPane(prog);}
+    if(name==='sowimport'){el.innerHTML=renderSowPane(prog);}
+    if(name==='docupload'){el.innerHTML=renderDocUploadPane(prog);}
     if(name==='overview'){
       const tbl=el.querySelector('table');
       if(tbl&&prog)tbl.outerHTML=renderOverviewTable(prog);
@@ -2554,34 +2616,28 @@ ${context}`;
      Get yours at: aistudio.google.com/apikey */
   let apiKey = localStorage.getItem('gcc_gemini_key') || '';
   if(!apiKey){
-    apiKey = prompt('Paste your Google Gemini API key:\n\nGet free key at aistudio.google.com/apikey\n→ Click "Create API key" → Copy it', '');
+    apiKey = prompt('Paste your FREE OpenRouter API key:\n\n1. Go to openrouter.ai/keys\n2. Sign up free (Google/GitHub login)\n3. Click "Create Key"\n4. Copy and paste here\n\n(Free tier: 50 requests/day, no credit card)', '');
     if(!apiKey){hideTyping();addAgentMsg('bot','Key needed. Click 🔑 Change key below.\n\nGet free key at: aistudio.google.com/apikey');return;}
-    localStorage.setItem('gcc_gemini_key', apiKey);
+    localStorage.setItem('gcc_gemini_key', apiKey); /* stored as gcc_gemini_key but now openrouter */
   }
 
-  /* Support both old AIzaSy keys and new AQ keys */
-  const isOAuthKey = apiKey.startsWith('AQ') || apiKey.includes('.');
-  const geminiUrl = isOAuthKey
-    ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
-    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  
-  /* Build messages for Gemini format */
-  const geminiMessages = _agentHistory.slice(-6).map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{text: m.content}]
-  }));
-
+  /* OpenRouter API — free tier, browser compatible, no credit card */
   try {
-    const response = await fetch(geminiUrl, {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(isOAuthKey ? {'Authorization': `Bearer ${apiKey}`} : {})
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://saubhatia-debug.github.io/zgcc/',
+        'X-Title': 'GCC Command Center'
       },
       body: JSON.stringify({
-        system_instruction: {parts: [{text: systemPrompt}]},
-        contents: geminiMessages,
-        generationConfig: {maxOutputTokens: 1000, temperature: 0.3}
+        model: 'google/gemini-flash-1.5',
+        messages: [
+          {role:'system', content: systemPrompt},
+          ..._agentHistory.slice(-6)
+        ],
+        max_tokens: 1000
       })
     });
 
@@ -2590,12 +2646,9 @@ ${context}`;
 
     if(!response.ok){
       const errMsg = data?.error?.message || `HTTP ${response.status}`;
-      /* Show specific error to help diagnose */
-      if(response.status===400) {
-        addAgentMsg('bot', `❌ Bad request: ${errMsg}\n\nMake sure your Gemini key starts with "AIza". Get a free key at aistudio.google.com/apikey`);
-      } else if(response.status===403){
+      if(response.status===401||response.status===403){
         localStorage.removeItem('gcc_gemini_key');
-        addAgentMsg('bot', `❌ Invalid API key.\n\n1. Go to aistudio.google.com/apikey\n2. Create a new key (starts with AIza...)\n3. Click any question below to enter it`);
+        addAgentMsg('bot', `❌ Invalid API key — cleared.\n\nGet a free OpenRouter key at openrouter.ai/keys\n→ Sign up free → Create key → Paste here\n\nClick any question to enter new key.`);
       } else {
         addAgentMsg('bot', `❌ Error ${response.status}: ${errMsg}`);
       }
@@ -2603,21 +2656,21 @@ ${context}`;
       return;
     }
 
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const reply = data?.choices?.[0]?.message?.content;
     if(reply){
       _agentHistory.push({role:'assistant', content: reply});
       addAgentMsg('bot', reply);
-      document.getElementById('agent-status-lbl').textContent = 'Powered by Gemini AI · Free';
+      document.getElementById('agent-status-lbl').textContent = 'Powered by Gemini · Free';
       const followUps = ['Tell me more', "What's the risk?", 'Who owns this?', 'When is it due?', 'Overall status?'];
       document.getElementById('agent-chips').innerHTML = followUps.map(c=>
         `<span class="agent-chip" onclick="askAgent('${c}')">${c}</span>`
-      ).join('');
+      ).join('') + '<span class="agent-chip" style="color:#E24B4A;border-color:#E24B4A" onclick="clearAgentKey()">🔑 Change key</span>';
     } else {
-      addAgentMsg('bot', `No response. Raw: ${JSON.stringify(data).slice(0,200)}`);
+      addAgentMsg('bot', `No response received. Try again.`);
     }
   } catch(e) {
     hideTyping();
-    addAgentMsg('bot', `Connection error: ${e.message}\n\nIf this persists, check browser console (F12) for details.`);
+    addAgentMsg('bot', `Connection error: ${e.message}`);
     document.getElementById('agent-status-lbl').textContent = 'Offline';
   }
 }
@@ -2629,6 +2682,666 @@ function sendAgentMsg(){
   inp.value = '';
   askAgent(q);
 }
+
+
+/* =========================================================
+   TEAM UPDATES — Paste & Parse
+   SOW IMPORT — Paste SOW → Generate Project
+   ========================================================= */
+
+let _pendingUpdates = []; /* parsed updates waiting for approval */
+
+function renderTeamUpdatesPane(prog){
+  const pending = _pendingUpdates.filter(u=>u.progId===prog.id);
+  const pendingHtml = pending.length ? `
+    <div style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="slabel" style="margin:0">${pending.length} update${pending.length!==1?'s':''} ready to apply</div>
+        <button class="parse-apply-all-btn" onclick="applyAllUpdates('${prog.id}')">Apply all</button>
+      </div>
+      ${pending.map((u,i)=>`
+        <div class="parse-item">
+          <div class="parse-item-info">
+            <div class="parse-item-task">${u.taskName}</div>
+            <div class="parse-item-meta">
+              ${u.owner?`<span>👤 ${u.owner}</span>`:''}
+              ${u.dueDate?`<span>📅 ${u.dueDate}</span>`:''}
+              ${u.progress!==null?`<span>📊 ${u.progress}% progress</span>`:''}
+              ${u.status?`<span class="badge badge-${u.status==='done'?'blue':u.status==='blocked'?'red':'green'}" style="font-size:9px">${u.status}</span>`:''}
+              <span style="color:var(--blue);font-size:9px">WS: ${u.wsName||'?'}</span>
+            </div>
+            ${u.note?`<div style="font-size:11px;color:var(--text3);margin-top:3px;font-style:italic">"${u.note}"</div>`:''}
+          </div>
+          <div class="parse-item-actions">
+            <button class="parse-apply-btn" onclick="applyUpdate('${prog.id}',${i})"><i class="ti ti-check" style="font-size:10px"></i> Apply</button>
+            <button class="parse-skip-btn" onclick="skipUpdate('${prog.id}',${i})">Skip</button>
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+
+  return `<div>
+    ${pendingHtml}
+    <div class="parse-panel">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+        <i class="ti ti-clipboard-text" style="font-size:14px;color:var(--blue)"></i>
+        Paste team updates
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Paste messages from WhatsApp, Teams, email — AI will extract task updates automatically</div>
+      <textarea class="parse-textarea" id="team-update-input" placeholder="Examples:
+• Vaishali to schedule Workday workshop with Jill by Monday
+• Saji to confirm hiring drive dates by June 12 - Not yet started
+• Bank account opening completed ✓
+• Office fit-out delayed to July, Hari is chasing vendor"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <button onclick="parseTeamUpdates('${prog.id}')" style="padding:7px 16px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
+          <i class="ti ti-sparkles" style="font-size:12px"></i>Parse with AI
+        </button>
+        <span style="font-size:10px;color:var(--text3)">AI matches updates to existing tasks in this programme</span>
+      </div>
+      <div id="parse-status" style="font-size:11px;color:var(--text3);margin-top:6px"></div>
+    </div>
+  </div>`;
+}
+
+async function parseTeamUpdates(progId){
+  const text = document.getElementById('team-update-input')?.value.trim();
+  if(!text){showToast('Please paste some team updates first');return;}
+  
+  const prog = state.programmes.find(p=>p.id===progId);
+  if(!prog)return;
+
+  const statusEl = document.getElementById('parse-status');
+  if(statusEl) statusEl.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> AI is parsing updates...';
+
+  /* Build task list for context */
+  const taskList = prog.workstreams.flatMap(ws=>
+    ws.levels.flatMap(lv=>lv.tasks.map(t=>({
+      id:t.id, name:t.name, owner:t.owner||'', wsId:ws.id, wsName:ws.name,
+      pct:t.pct, rag:t.rag, end:t.end
+    })))
+  );
+
+  let apiKey = localStorage.getItem('gcc_gemini_key')||'';
+  if(!apiKey){
+    apiKey = prompt('Enter your OpenRouter API key (openrouter.ai/keys):','');
+    if(!apiKey)return;
+    localStorage.setItem('gcc_gemini_key',apiKey);
+  }
+
+  const systemPrompt = `You are a project management assistant. Extract task updates from team messages and match them to existing tasks.
+
+EXISTING TASKS IN THIS PROGRAMME:
+${JSON.stringify(taskList, null, 1)}
+
+Return ONLY a JSON array of matched updates. Each item:
+{
+  "taskId": "id of matched task or null if no match",
+  "taskName": "task name as mentioned in message",
+  "wsName": "workstream name",
+  "owner": "person name or null",
+  "dueDate": "date mentioned or null",
+  "progress": number 0-100 or null,
+  "status": "done|in-progress|blocked|not-started or null",
+  "note": "brief note about the update or null"
+}
+
+Rules:
+- "completed", "done", "✓" = progress 100, status done
+- "not yet", "pending", "not started" = progress 0, status not-started  
+- "delayed", "blocked", "issue" = status blocked
+- Match tasks by keywords in name or owner
+- Return empty array [] if no clear updates found
+Return only the JSON array, no other text.`;
+
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${apiKey}`,
+        'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/',
+        'X-Title':'GCC Command Center'
+      },
+      body:JSON.stringify({
+        model:'google/gemini-flash-1.5',
+        messages:[
+          {role:'system',content:systemPrompt},
+          {role:'user',content:`Extract updates from:\n${text}`}
+        ],
+        max_tokens:1000
+      })
+    });
+    const d = await r.json();
+    const raw = d?.choices?.[0]?.message?.content||'[]';
+    const updates = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    
+    /* Add progId to each update */
+    const tagged = updates.map(u=>({...u, progId, applied:false}));
+    _pendingUpdates = [..._pendingUpdates.filter(u=>u.progId!==progId), ...tagged];
+    
+    if(statusEl) statusEl.innerHTML = '';
+    /* Re-render the pane */
+    const el = document.getElementById('spane-teamupdates');
+    if(el) el.innerHTML = renderTeamUpdatesPane(prog);
+    if(tagged.length===0) showToast('No matching tasks found — try more specific descriptions');
+    else showToast(`Found ${tagged.length} update${tagged.length!==1?'s':''} — review and apply`);
+  } catch(e){
+    if(statusEl) statusEl.textContent = 'Parse error: '+e.message;
+    showToast('AI parse failed — check your API key');
+  }
+}
+
+function applyUpdate(progId, idx){
+  const u = _pendingUpdates.filter(x=>x.progId===progId)[idx];
+  if(!u||!u.taskId)return;
+  const prog = state.programmes.find(p=>p.id===progId);
+  if(!prog)return;
+  prog.workstreams.forEach(ws=>ws.levels.forEach(lv=>lv.tasks.forEach(t=>{
+    if(t.id===u.taskId){
+      if(u.progress!==null) t.pct=u.progress;
+      if(u.owner) t.owner=u.owner;
+      if(u.status==='done') t.pct=100;
+      t.rag=computeRagFromDates(t.pct,t.startISO||toISO(t.start),t.endISO||toISO(t.end));
+    }
+  })));
+  _pendingUpdates = _pendingUpdates.filter((x,i)=>!(x.progId===progId&&_pendingUpdates.filter(y=>y.progId===progId).indexOf(x)===idx));
+  save(); renderAll();
+  showToast('Update applied');
+}
+
+function applyAllUpdates(progId){
+  const pending = _pendingUpdates.filter(u=>u.progId===progId&&u.taskId);
+  const prog = state.programmes.find(p=>p.id===progId);
+  if(!prog)return;
+  pending.forEach(u=>{
+    prog.workstreams.forEach(ws=>ws.levels.forEach(lv=>lv.tasks.forEach(t=>{
+      if(t.id===u.taskId){
+        if(u.progress!==null) t.pct=u.progress;
+        if(u.owner) t.owner=u.owner;
+        if(u.status==='done') t.pct=100;
+        t.rag=computeRagFromDates(t.pct,t.startISO||toISO(t.start),t.endISO||toISO(t.end));
+      }
+    })));
+  });
+  _pendingUpdates = _pendingUpdates.filter(u=>u.progId!==progId);
+  save(); renderAll();
+  showToast(`${pending.length} updates applied`);
+}
+
+function skipUpdate(progId, idx){
+  const list = _pendingUpdates.filter(u=>u.progId===progId);
+  const item = list[idx];
+  _pendingUpdates = _pendingUpdates.filter(u=>u!==item);
+  const prog = state.programmes.find(p=>p.id===progId);
+  if(prog){const el=document.getElementById('spane-teamupdates');if(el)el.innerHTML=renderTeamUpdatesPane(prog);}
+}
+
+/* ─── SOW IMPORT ─── */
+let _sowPreview = null;
+
+function renderSowPane(prog){
+  const previewHtml = _sowPreview ? `
+    <div class="sow-preview">
+      <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:10px">Preview — ${_sowPreview.programmeName}</div>
+      ${(_sowPreview.workstreams||[]).map(ws=>`
+        <div class="sow-ws-item">
+          <div class="sow-ws-name"><i class="ti ti-stream" style="font-size:11px;margin-right:4px;color:var(--blue)"></i>${ws.name}</div>
+          <div class="sow-task-list">
+            ${(ws.tasks||[]).map(t=>`<div class="sow-task"><i class="ti ti-point" style="font-size:8px;color:var(--text3)"></i>${t.name} ${t.owner?'· '+t.owner:''} ${t.end?'· due '+t.end:''}</div>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button onclick="applySowToProject('${prog.id}')" style="padding:7px 16px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">
+        <i class="ti ti-plus" style="font-size:12px;margin-right:4px"></i>Create as new programme
+      </button>
+      <button onclick="applySowToProject('${prog.id}',true)" style="padding:7px 16px;background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">
+        Add to current programme
+      </button>
+      <button onclick="_sowPreview=null;renderAll()" style="padding:7px 12px;background:none;color:var(--text3);border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">Clear</button>
+    </div>` : '';
+
+  return `<div>
+    <div class="sow-panel">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:6px">
+        <i class="ti ti-file-description" style="font-size:14px;color:var(--blue)"></i>
+        Build project from SOW / Brief
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Paste your Statement of Work, project brief, or scope document — AI generates a full workstream and task breakdown automatically</div>
+      <textarea class="parse-textarea" id="sow-input" style="height:150px" placeholder="Paste your SOW here...
+
+Example:
+Project: GCC Setup for Acme Corp, Bangalore
+Timeline: June to September 2026
+
+Scope:
+1. Legal & Entity Setup — Incorporate private limited company, draft MOA/AOA, register with ROC, open bank account
+2. Office Setup — Identify and lease office space, fit-out, IT infrastructure, furniture
+3. Talent Acquisition — Define org structure, JDs, hire 50 FTEs across tech and ops
+4. HR & Compliance — Payroll setup, benefits, policies, POSH compliance
+..."></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <button onclick="parseSow('${prog.id}')" style="padding:7px 16px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
+          <i class="ti ti-sparkles" style="font-size:12px"></i>Generate project plan
+        </button>
+        <span style="font-size:10px;color:var(--text3)">Creates workstreams, milestones and tasks with owners and timelines</span>
+      </div>
+      <div id="sow-status" style="font-size:11px;color:var(--text3);margin-top:6px"></div>
+    </div>
+    ${previewHtml}
+  </div>`;
+}
+
+async function parseSow(progId){
+  const text = document.getElementById('sow-input')?.value.trim();
+  if(!text){showToast('Please paste your SOW first');return;}
+  
+  const statusEl = document.getElementById('sow-status');
+  if(statusEl) statusEl.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generating project plan...';
+
+  let apiKey = localStorage.getItem('gcc_gemini_key')||'';
+  if(!apiKey){
+    apiKey = prompt('Enter your OpenRouter API key (openrouter.ai/keys):','');
+    if(!apiKey)return;
+    localStorage.setItem('gcc_gemini_key',apiKey);
+  }
+
+  const systemPrompt = `You are a GCC (Global Capability Centre) project planning expert. 
+Convert a Statement of Work or project brief into a structured project plan.
+
+Return ONLY valid JSON in this exact format:
+{
+  "programmeName": "Project name",
+  "company": "Client company name",
+  "location": "City",
+  "timeline": "Month Year to Month Year",
+  "workstreams": [
+    {
+      "name": "Workstream name",
+      "icon": "ti-building" (tabler icon name),
+      "tasks": [
+        {
+          "level": "L1",
+          "label": "Milestones",
+          "name": "Task name",
+          "owner": "Role or person",
+          "start": "YYYY-MM-DD",
+          "end": "YYYY-MM-DD",
+          "pct": 0
+        }
+      ]
+    }
+  ]
+}
+
+Rules:
+- Create 5-8 workstreams covering all scope areas
+- Each workstream: 3-5 tasks minimum
+- Assign realistic owners (Legal, CoS, HR Lead, Admin, TA Lead, Finance, IT)
+- Spread tasks across the timeline logically (earlier tasks first)
+- L1=Milestones, L2=Key Activities, L3=Sub-tasks, L4=Actions
+- Return ONLY the JSON, no other text`;
+
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${apiKey}`,
+        'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/',
+        'X-Title':'GCC Command Center'
+      },
+      body:JSON.stringify({
+        model:'google/gemini-flash-1.5',
+        messages:[
+          {role:'system',content:systemPrompt},
+          {role:'user',content:`Generate project plan from this SOW:\n${text}`}
+        ],
+        max_tokens:3000
+      })
+    });
+    const d = await r.json();
+    const raw = d?.choices?.[0]?.message?.content||'{}';
+    _sowPreview = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if(statusEl) statusEl.innerHTML = '';
+    const prog = state.programmes.find(p=>p.id===progId);
+    const el = document.getElementById('spane-sowimport');
+    if(el&&prog) el.innerHTML = renderSowPane(prog);
+    showToast('Project plan generated — review and apply');
+  } catch(e){
+    if(statusEl) statusEl.textContent = 'Error: '+e.message;
+    showToast('Generation failed — check your API key');
+  }
+}
+
+function applySowToProject(progId, addToCurrent=false){
+  if(!_sowPreview) return;
+  
+  if(!addToCurrent){
+    /* Create as new programme */
+    const newProg = {
+      id: uid(),
+      name: _sowPreview.programmeName || 'New Programme',
+      company: _sowPreview.company || '',
+      location: _sowPreview.location || '',
+      timeline: _sowPreview.timeline || '',
+      color: '#378ADD',
+      workstreams: (_sowPreview.workstreams||[]).map(ws=>({
+        id: uid(),
+        name: ws.name,
+        icon: ws.icon || 'ti-stream',
+        levels: [{
+          level: 'L1',
+          label: 'Milestones',
+          tasks: (ws.tasks||[]).filter(t=>t.level==='L1'||!t.level).map(t=>({
+            id: uid(),
+            name: t.name,
+            owner: t.owner||'',
+            start: t.start||'',
+            end: t.end||'',
+            startISO: t.start||'',
+            endISO: t.end||'',
+            pct: t.pct||0,
+            rag: 'gray'
+          }))
+        },{
+          level: 'L2',
+          label: 'Key Activities',
+          tasks: (ws.tasks||[]).filter(t=>t.level==='L2').map(t=>({
+            id: uid(),
+            name: t.name,
+            owner: t.owner||'',
+            start: t.start||'',
+            end: t.end||'',
+            startISO: t.start||'',
+            endISO: t.end||'',
+            pct: t.pct||0,
+            rag: 'gray'
+          }))
+        }]
+      }))
+    };
+    /* Recompute RAG for all tasks */
+    newProg.workstreams.forEach(ws=>ws.levels.forEach(lv=>lv.tasks.forEach(t=>{
+      t.rag = computeRagFromDates(t.pct, t.startISO, t.endISO);
+    })));
+    state.programmes.push(newProg);
+    state.activeProgId = newProg.id;
+    showToast(`Programme "${newProg.name}" created with ${newProg.workstreams.length} workstreams`);
+  } else {
+    /* Add workstreams to current programme */
+    const prog = state.programmes.find(p=>p.id===progId);
+    if(!prog)return;
+    (_sowPreview.workstreams||[]).forEach(ws=>{
+      prog.workstreams.push({
+        id: uid(), name: ws.name, icon: ws.icon||'ti-stream',
+        levels: [{level:'L1',label:'Milestones',tasks:(ws.tasks||[]).map(t=>({
+          id:uid(),name:t.name,owner:t.owner||'',
+          start:t.start||'',end:t.end||'',
+          startISO:t.start||'',endISO:t.end||'',
+          pct:t.pct||0,rag:'gray'
+        }))}]
+      });
+    });
+    showToast(`Added ${_sowPreview.workstreams.length} workstreams to ${prog.name}`);
+  }
+  _sowPreview = null;
+  save(); renderAll();
+}
+
+
+
+/* =========================================================
+   DOCUMENT UPLOAD — Extract from images/PDFs/docs
+   ========================================================= */
+
+let _docFile = null;
+let _docBase64 = null;
+let _docMime = null;
+let _docExtractMode = 'tasks'; /* tasks | sow | summary */
+
+function renderDocUploadPane(prog){
+  return `<div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:6px">
+        <i class="ti ti-file-upload" style="font-size:15px;color:var(--blue)"></i>
+        Upload & Extract
+      </div>
+      <div style="font-size:11px;color:var(--text3)">Upload images, PDFs, Word docs, or screenshots — AI extracts project data automatically</div>
+    </div>
+
+    <div class="doc-tabs">
+      <button class="doc-tab ${_docExtractMode==='tasks'?'act':''}" onclick="setDocMode('tasks','${prog.id}')">📋 Extract task updates</button>
+      <button class="doc-tab ${_docExtractMode==='sow'?'act':''}" onclick="setDocMode('sow','${prog.id}')">📄 Extract as SOW</button>
+      <button class="doc-tab ${_docExtractMode==='summary'?'act':''}" onclick="setDocMode('summary','${prog.id}')">💡 Summarise document</button>
+    </div>
+
+    <label for="doc-file-input" class="doc-upload-zone" id="doc-upload-zone"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="handleDocDrop(event,'${prog.id}')">
+      <div class="doc-upload-icon"><i class="ti ti-cloud-upload"></i></div>
+      <div class="doc-upload-title">Click to upload or drag & drop</div>
+      <div class="doc-upload-sub">Images (PNG, JPG), PDF, Word (.docx), Excel (.xlsx), Text files</div>
+      <div class="doc-upload-sub" style="margin-top:4px;color:var(--blue)">Max 10MB</div>
+    </label>
+    <input type="file" id="doc-file-input" style="display:none"
+      accept="image/*,.pdf,.docx,.xlsx,.txt,.csv"
+      onchange="handleDocFile(event,'${prog.id}')">
+
+    <div id="doc-preview-area"></div>
+    <div id="doc-result-area"></div>
+  </div>`;
+}
+
+function setDocMode(mode, progId){
+  _docExtractMode = mode;
+  const prog = state.programmes.find(p=>p.id===progId);
+  const el = document.getElementById('spane-docupload');
+  if(el && prog) el.innerHTML = renderDocUploadPane(prog);
+}
+
+function handleDocDrop(e, progId){
+  e.preventDefault();
+  document.getElementById('doc-upload-zone')?.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file) processDocFile(file, progId);
+}
+
+function handleDocFile(e, progId){
+  const file = e.target.files[0];
+  if(file) processDocFile(file, progId);
+}
+
+function processDocFile(file, progId){
+  if(file.size > 10 * 1024 * 1024){showToast('File too large — max 10MB');return;}
+  _docFile = file;
+  _docMime = file.type;
+
+  const previewArea = document.getElementById('doc-preview-area');
+  const resultArea = document.getElementById('doc-result-area');
+  if(resultArea) resultArea.innerHTML = '';
+
+  const isImage = file.type.startsWith('image/');
+  const isPDF = file.type === 'application/pdf';
+  const ext = file.name.split('.').pop().toLowerCase();
+  const icon = isImage ? 'ti-photo' : isPDF ? 'ti-file-type-pdf' :
+    ext==='docx'?'ti-file-type-doc': ext==='xlsx'?'ti-file-type-xls':'ti-file-text';
+  const iconColor = isPDF?'#E24B4A': ext==='docx'?'#185FA5': ext==='xlsx'?'#639922':'#6b6960';
+
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    _docBase64 = ev.target.result.split(',')[1];
+
+    let preview = `<div class="doc-preview-card">
+      <div class="doc-file-info">
+        <i class="ti ${icon}" style="font-size:22px;color:${iconColor}"></i>
+        <div>
+          <div class="doc-file-name">${file.name}</div>
+          <div class="doc-file-size">${(file.size/1024).toFixed(1)}KB · ${file.type||ext.toUpperCase()}</div>
+        </div>
+      </div>`;
+
+    if(isImage){
+      preview += `<img src="${ev.target.result}" class="doc-preview-img" alt="Preview">`;
+    }
+
+    const modeLabel = _docExtractMode==='tasks'?'Extract task updates':
+      _docExtractMode==='sow'?'Extract project plan':'Summarise document';
+
+    preview += `<button class="doc-extract-btn" onclick="extractFromDoc('${progId}')">
+        <i class="ti ti-sparkles" style="font-size:13px"></i>${modeLabel}
+      </button>
+      <div id="doc-extract-status" style="font-size:11px;color:var(--text3);margin-top:6px"></div>
+    </div>`;
+
+    if(previewArea) previewArea.innerHTML = preview;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function extractFromDoc(progId){
+  if(!_docBase64){showToast('Please upload a file first');return;}
+
+  const statusEl = document.getElementById('doc-extract-status');
+  if(statusEl) statusEl.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Extracting with AI...';
+
+  let apiKey = localStorage.getItem('gcc_gemini_key')||'';
+  if(!apiKey){
+    apiKey = prompt('Enter your OpenRouter API key (openrouter.ai/keys):','');
+    if(!apiKey)return;
+    localStorage.setItem('gcc_gemini_key',apiKey);
+  }
+
+  const prog = state.programmes.find(p=>p.id===progId);
+  const isImage = _docMime && _docMime.startsWith('image/');
+
+  /* Build prompt based on mode */
+  let userPrompt = '';
+  let systemPrompt = '';
+
+  if(_docExtractMode === 'tasks'){
+    const taskList = prog ? prog.workstreams.flatMap(ws=>
+      ws.levels.flatMap(lv=>lv.tasks.map(t=>({id:t.id,name:t.name,wsName:ws.name,pct:t.pct})))
+    ) : [];
+    systemPrompt = `You are a project management assistant. Extract task updates from documents/images and match to existing tasks. Return JSON array of updates with: taskId, taskName, wsName, owner, dueDate, progress (0-100 or null), status (done/in-progress/blocked/not-started or null), note. Existing tasks: ${JSON.stringify(taskList)}`;
+    userPrompt = 'Extract all task updates, action items, and status changes from this document.';
+  } else if(_docExtractMode === 'sow'){
+    systemPrompt = `You are a GCC project planning expert. Extract project structure from documents and return JSON: {programmeName, company, location, timeline, workstreams:[{name, icon, tasks:[{level,label,name,owner,start,end,pct}]}]}`;
+    userPrompt = 'Extract the complete project structure, workstreams, tasks, owners and timelines from this document.';
+  } else {
+    systemPrompt = 'You are a document analyst. Provide a clear, structured summary of this document highlighting key points, action items, decisions, risks, and next steps relevant to project management.';
+    userPrompt = 'Summarise this document for a project manager.';
+  }
+
+  try {
+    /* Build message — use vision for images, text extraction for others */
+    let messages;
+    if(isImage){
+      messages = [{
+        role: 'user',
+        content: [
+          {type:'text', text: userPrompt},
+          {type:'image_url', image_url:{url:`data:${_docMime};base64,${_docBase64}`}}
+        ]
+      }];
+    } else {
+      /* For non-image files, send as text with base64 note */
+      messages = [{
+        role: 'user',
+        content: `${userPrompt}\n\nDocument content (base64 encoded ${_docFile?.name}):\n[File: ${_docFile?.name}, Size: ${(_docFile?.size/1024).toFixed(1)}KB]\n\nNote: This is a ${_docFile?.name?.split('.').pop()?.toUpperCase()} file. Please extract all text, tables, and structured data from it.`
+      }];
+    }
+
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${apiKey}`,
+        'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/',
+        'X-Title':'GCC Command Center'
+      },
+      body:JSON.stringify({
+        model: isImage ? 'google/gemini-flash-1.5' : 'google/gemini-flash-1.5',
+        messages:[{role:'system',content:systemPrompt},...messages],
+        max_tokens:2000
+      })
+    });
+
+    const d = await r.json();
+    if(statusEl) statusEl.innerHTML = '';
+
+    if(!r.ok){
+      const err = d?.error?.message||`HTTP ${r.status}`;
+      document.getElementById('doc-result-area').innerHTML =
+        `<div style="color:#E24B4A;font-size:12px;padding:1rem;background:#FCEBEB;border-radius:var(--radius);margin-top:8px">❌ Error: ${err}</div>`;
+      return;
+    }
+
+    const reply = d?.choices?.[0]?.message?.content||'';
+
+    if(_docExtractMode==='tasks'){
+      try{
+        const updates = JSON.parse(reply.replace(/```json|```/g,'').trim());
+        _pendingUpdates = [..._pendingUpdates.filter(u=>u.progId!==progId),
+          ...updates.map(u=>({...u,progId,applied:false}))];
+        /* Switch to team updates tab */
+        const tabs = document.querySelectorAll('.stab');
+        tabs.forEach(t=>{if(t.textContent.includes('Team Updates'))t.click();});
+        showToast(`Extracted ${updates.length} task updates — review in Team Updates tab`);
+      } catch(e){
+        showDoc(reply, progId);
+      }
+    } else if(_docExtractMode==='sow'){
+      try{
+        _sowPreview = JSON.parse(reply.replace(/```json|```/g,'').trim());
+        /* Switch to SOW tab */
+        const tabs = document.querySelectorAll('.stab');
+        tabs.forEach(t=>{if(t.textContent.includes('SOW Import'))t.click();});
+        showToast('Project plan extracted — review in SOW Import tab');
+      } catch(e){
+        showDoc(reply, progId);
+      }
+    } else {
+      showDoc(reply, progId);
+    }
+  } catch(e){
+    if(statusEl) statusEl.innerHTML = '';
+    document.getElementById('doc-result-area').innerHTML =
+      `<div style="color:#E24B4A;font-size:12px;padding:1rem;background:#FCEBEB;border-radius:var(--radius);margin-top:8px">❌ ${e.message}</div>`;
+  }
+}
+
+function showDoc(text, progId){
+  const area = document.getElementById('doc-result-area');
+  if(!area)return;
+  area.innerHTML = `<div style="margin-top:10px">
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Extracted content</div>
+    <div class="doc-result">${text.replace(/</g,'&lt;').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}</div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="navigator.clipboard.writeText(\`${text.replace(/`/g,'\\`')}\`);showToast('Copied!')" 
+        style="padding:5px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">
+        <i class="ti ti-copy" style="font-size:11px;margin-right:3px"></i>Copy
+      </button>
+      <button onclick="useAsTeamUpdate('${progId}',\`${text.replace(/`/g,'\\`')}\`)"
+        style="padding:5px 12px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bg);border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">
+        <i class="ti ti-message-forward" style="font-size:11px;margin-right:3px"></i>Use as team update
+      </button>
+    </div>
+  </div>`;
+}
+
+function useAsTeamUpdate(progId, text){
+  /* Pre-fill the team updates textarea and switch tab */
+  _docExtractMode = 'tasks';
+  const tabs = document.querySelectorAll('.stab');
+  tabs.forEach(t=>{if(t.textContent.includes('Team Updates'))t.click();});
+  setTimeout(()=>{
+    const inp = document.getElementById('team-update-input');
+    if(inp){inp.value=text;inp.focus();}
+  },200);
+}
+
 
 load();
 renderAll();
@@ -2645,7 +3358,7 @@ initComments();
         <div class="agent-avatar">✦</div>
         <div>
           <div class="agent-name">GCC Project Agent</div>
-          <div class="agent-status" id="agent-status-lbl">Powered by Gemini AI · Free</div>
+          <div class="agent-status" id="agent-status-lbl">Powered by OpenRouter · Free</div>
         </div>
       </div>
       <button class="agent-close" onclick="toggleAgent()">×</button>
