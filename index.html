@@ -394,7 +394,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 .doc-tab.act{background:var(--zinnov);color:#fff;border-color:var(--zinnov)}
 
 </style>
-<!-- v:20260616091213 -->
+<!-- v:20260616091343 -->
 </head>
 <body>
 
@@ -2626,7 +2626,7 @@ ${context}`;
         'X-Title': 'GCC Command Center'
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3.1-8b-instruct',
+        model: 'openrouter/free',
         messages: [
           {role:'system', content: systemPrompt},
           ..._agentHistory.slice(-6)
@@ -2797,7 +2797,7 @@ Return only the JSON array, no other text.`;
         'X-Title':'GCC Command Center'
       },
       body:JSON.stringify({
-        model:'meta-llama/llama-3.1-8b-instruct',
+        model:'openrouter/free',
         messages:[
           {role:'system',content:systemPrompt},
           {role:'user',content:`Extract updates from:\n${text}`}
@@ -2986,7 +2986,7 @@ Rules:
         'X-Title':'GCC Command Center'
       },
       body:JSON.stringify({
-        model:'meta-llama/llama-3.1-8b-instruct',
+        model:'openrouter/free',
         messages:[
           {role:'system',content:systemPrompt},
           {role:'user',content:`Generate project plan from this SOW:\n${text}`}
@@ -3288,7 +3288,7 @@ async function extractFromDoc(progId){
         'X-Title':'GCC Command Center'
       },
       body:JSON.stringify({
-        model: isImage ? 'meta-llama/llama-3.2-11b-vision-instruct:free' : 'meta-llama/llama-3.1-8b-instruct',
+        model: 'openrouter/free',
         messages:[{role:'system',content:systemPrompt},...messages],
         max_tokens:2000
       })
@@ -3607,7 +3607,7 @@ async function runAIImport(progId, source){
     const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`,'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/','X-Title':'GCC Command Center'},
-      body:JSON.stringify({model:(source==='file'&&isImage)?'meta-llama/llama-3.2-11b-vision-instruct:free':'meta-llama/llama-3.1-8b-instruct',messages:[{role:'system',content:p.system},...messages],max_tokens:2000})
+      body:JSON.stringify({model:'openrouter/free',messages:[{role:'system',content:p.system},...messages],max_tokens:2000})
     });
     const d = await r.json();
     if(statusEl) statusEl.innerHTML = '';
