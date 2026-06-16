@@ -394,7 +394,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 .doc-tab.act{background:var(--zinnov);color:#fff;border-color:var(--zinnov)}
 
 </style>
-<!-- v:20260616070801 -->
+<!-- v:20260616091213 -->
 </head>
 <body>
 
@@ -3122,7 +3122,7 @@ function renderDocUploadPane(prog){
       ondrop="handleDocDrop(event,'${prog.id}')">
       <i class="ti ti-cloud-upload" style="font-size:36px;color:var(--text3);display:block;margin-bottom:8px"></i>
       <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px">Click or drag & drop your file here</div>
-      <div style="font-size:11px;color:var(--text3)">PNG · JPG · PDF · DOCX · XLSX · TXT · Max 10MB</div>
+      <div style="font-size:11px;color:var(--text3)">PNG · JPG (vision AI) · PDF · DOCX · XLSX · TXT · Max 10MB</div>
     </div>
     <input type="file" id="doc-file-inp" style="display:none;position:absolute"
       accept="image/*,.pdf,.docx,.xlsx,.txt,.csv"
@@ -3288,7 +3288,7 @@ async function extractFromDoc(progId){
         'X-Title':'GCC Command Center'
       },
       body:JSON.stringify({
-        model: isImage ? 'meta-llama/llama-3.1-8b-instruct' : 'meta-llama/llama-3.1-8b-instruct',
+        model: isImage ? 'meta-llama/llama-3.2-11b-vision-instruct:free' : 'meta-llama/llama-3.1-8b-instruct',
         messages:[{role:'system',content:systemPrompt},...messages],
         max_tokens:2000
       })
@@ -3588,7 +3588,17 @@ async function runAIImport(progId, source){
   if(source==='file' && isImage){
     messages = [{role:'user',content:[{type:'text',text:p.user},{type:'image_url',image_url:{url:`data:${_docMime};base64,${_docBase64}`}}]}];
   } else if(source==='file'){
-    messages = [{role:'user',content:`${p.user}\n\nDocument: ${_docFile?.name}\n(Non-image file — extract all text, tables and structured data)`}];
+    /* For text-based files, decode and send actual content */
+    let fileContent = '';
+    try {
+      fileContent = decodeURIComponent(escape(atob(_docBase64)));
+    } catch(e) {
+      fileContent = `[Binary file: ${_docFile?.name} — ${(_docFile?.size/1024).toFixed(1)}KB]`;
+    }
+    const ext2 = (_docFile?.name||'').split('.').pop().toLowerCase();
+    const isTxt = ['txt','csv','md','json'].includes(ext2);
+    const fileBody = isTxt ? ('Content:\n'+fileContent.slice(0,8000)) : ('Note: This is a '+ext2.toUpperCase()+' file. Extract all project tasks, workstreams, milestones, owners, dates and timelines.');
+    messages = [{role:'user',content:p.user+'\n\nFile: '+(_docFile?.name||'')+' \n\n'+fileBody}];
   } else {
     messages = [{role:'user',content:`${p.user}\n\n${content}`}];
   }
@@ -3597,7 +3607,7 @@ async function runAIImport(progId, source){
     const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`,'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/','X-Title':'GCC Command Center'},
-      body:JSON.stringify({model:'meta-llama/llama-3.1-8b-instruct',messages:[{role:'system',content:p.system},...messages],max_tokens:2000})
+      body:JSON.stringify({model:(source==='file'&&isImage)?'meta-llama/llama-3.2-11b-vision-instruct:free':'meta-llama/llama-3.1-8b-instruct',messages:[{role:'system',content:p.system},...messages],max_tokens:2000})
     });
     const d = await r.json();
     if(statusEl) statusEl.innerHTML = '';
