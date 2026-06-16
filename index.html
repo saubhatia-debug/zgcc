@@ -394,7 +394,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 .doc-tab.act{background:var(--zinnov);color:#fff;border-color:var(--zinnov)}
 
 </style>
-<!-- v:20260616052020 -->
+<!-- v:20260616053037 -->
 </head>
 <body>
 
@@ -890,8 +890,7 @@ function renderMain(){
       <button class="stab${sp==='plan'?' active':''}" onclick="switchSPane('plan',this,'${prog.id}')"><i class="ti ti-list-check" style="font-size:12px;margin-right:3px"></i>Project Plan</button>
       <button class="stab${sp==='alerts'?' active':''}" onclick="switchSPane('alerts',this,'${prog.id}')"><i class="ti ti-alert-triangle" style="font-size:12px;margin-right:3px"></i>Alerts</button>
       <button class="stab viewer-hidden-tab${sp==='teamupdates'?' active':''}" onclick="switchSPane('teamupdates',this,'${prog.id}')"><i class="ti ti-message-forward" style="font-size:12px;margin-right:3px"></i>Team Updates${_pendingUpdates.length>0?`<span style="background:#E24B4A;color:#fff;border-radius:10px;font-size:9px;padding:0 4px;margin-left:4px;line-height:14px;display:inline-block">${_pendingUpdates.length}</span>`:''}</button>
-      <button class="stab viewer-hidden-tab${sp==='sowimport'?' active':''}" onclick="switchSPane('sowimport',this,'${prog.id}')"><i class="ti ti-file-import" style="font-size:12px;margin-right:3px"></i>SOW Import</button>
-      <button class="stab viewer-hidden-tab${sp==='docupload'?' active':''}" onclick="switchSPane('docupload',this,'${prog.id}')"><i class="ti ti-file-upload" style="font-size:12px;margin-right:3px"></i>Documents</button>
+      <button class="stab viewer-hidden-tab${sp==='aiimport'?' active':''}" onclick="switchSPane('aiimport',this,'${prog.id}')"><i class="ti ti-sparkles" style="font-size:12px;margin-right:3px"></i>AI Import</button>
       <button class="stab viewer-hidden-tab${sp==='comments'?' active':''}" onclick="switchSPane('comments',this,'${prog.id}')"><i class="ti ti-message-circle" style="font-size:12px;margin-right:3px"></i>Comments${cAll().filter(c=>c.progId===prog.id&&!c.resolved).length>0?`<span style="background:#E24B4A;color:#fff;border-radius:10px;font-size:9px;padding:0 4px;margin-left:4px;line-height:14px;display:inline-block">${cAll().filter(c=>c.progId===prog.id&&!c.resolved).length}</span>`:''}</button>
       <button class="stab viewer-hidden-tab${sp==='audit'?' active':''}" onclick="switchSPane('audit',this,'${prog.id}')"><i class="ti ti-history" style="font-size:12px;margin-right:3px"></i>Audit History</button>
       <button class="stab viewer-hidden-tab${sp==='import'?' active':''}" onclick="switchSPane('import',this,'${prog.id}')"><i class="ti ti-upload" style="font-size:12px;margin-right:3px"></i>Import Excel</button>
@@ -925,12 +924,8 @@ function renderMain(){
       ${renderTeamUpdatesPane(prog)}
     </div>
 
-    <div id="spane-sowimport" class="spane${sp==='sowimport'?' active':''}">
-      ${renderSowPane(prog)}
-    </div>
-
-    <div id="spane-docupload" class="spane${sp==='docupload'?' active':''}">
-      ${renderDocUploadPane(prog)}
+    <div id="spane-aiimport" class="spane${sp==='aiimport'?' active':''}">
+      ${renderAIImportPane(prog)}
     </div>
 
     <div id="spane-comments"   class="spane${sp==='comments'?' active':''}">
@@ -1170,8 +1165,7 @@ function switchSPane(name,btn,progId){
     if(name==='alerts'){el.innerHTML='<div class="slabel" style="margin-bottom:10px">Off track &amp; at-risk items — turn these green</div>'+renderAlerts(prog);}
     if(name==='comments'){el.innerHTML='<div id="cos-comments-pane">'+renderProgComments(prog)+'</div>';}
     if(name==='teamupdates'){el.innerHTML=renderTeamUpdatesPane(prog);}
-    if(name==='sowimport'){el.innerHTML=renderSowPane(prog);}
-    if(name==='docupload'){el.innerHTML=renderDocUploadPane(prog);}
+    if(name==='aiimport'){el.innerHTML=renderAIImportPane(prog);}
     if(name==='overview'){
       const tbl=el.querySelector('table');
       if(tbl&&prog)tbl.outerHTML=renderOverviewTable(prog);
@@ -3101,35 +3095,61 @@ let _docMime = null;
 let _docExtractMode = 'tasks'; /* tasks | sow | summary */
 
 function renderDocUploadPane(prog){
+  const modeHints = {
+    tasks:'AI will extract task updates and match them to existing tasks in this programme',
+    sow:'AI will extract workstreams, tasks, owners and timelines to build a project plan',
+    summary:'AI will summarise the document highlighting action items, decisions and risks'
+  };
   return `<div>
     <div style="margin-bottom:14px">
       <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:6px">
-        <i class="ti ti-file-upload" style="font-size:15px;color:var(--blue)"></i>
-        Upload & Extract
+        <i class="ti ti-file-upload" style="font-size:15px;color:var(--blue)"></i>Upload & Extract
       </div>
-      <div style="font-size:11px;color:var(--text3)">Upload images, PDFs, Word docs, or screenshots — AI extracts project data automatically</div>
+      <div style="font-size:11px;color:var(--text3)">Upload images, PDFs, Word docs or screenshots — AI extracts project data automatically</div>
     </div>
 
-    <div class="doc-tabs">
-      <button class="doc-tab ${_docExtractMode==='tasks'?'act':''}" onclick="setDocMode('tasks','${prog.id}')">📋 Extract task updates</button>
-      <button class="doc-tab ${_docExtractMode==='sow'?'act':''}" onclick="setDocMode('sow','${prog.id}')">📄 Extract as SOW</button>
-      <button class="doc-tab ${_docExtractMode==='summary'?'act':''}" onclick="setDocMode('summary','${prog.id}')">💡 Summarise document</button>
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      <button onclick="setDocMode('tasks','${prog.id}')" style="padding:5px 12px;border-radius:20px;border:1px solid;cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;${_docExtractMode==='tasks'?'background:var(--zinnov);color:#fff;border-color:var(--zinnov)':'background:var(--surface);color:var(--text2);border-color:var(--border2)'}">📋 Task updates</button>
+      <button onclick="setDocMode('sow','${prog.id}')" style="padding:5px 12px;border-radius:20px;border:1px solid;cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;${_docExtractMode==='sow'?'background:var(--zinnov);color:#fff;border-color:var(--zinnov)':'background:var(--surface);color:var(--text2);border-color:var(--border2)'}">📄 SOW / Project plan</button>
+      <button onclick="setDocMode('summary','${prog.id}')" style="padding:5px 12px;border-radius:20px;border:1px solid;cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;${_docExtractMode==='summary'?'background:var(--zinnov);color:#fff;border-color:var(--zinnov)':'background:var(--surface);color:var(--text2);border-color:var(--border2)'}">💡 Summarise</button>
     </div>
 
-    <label for="doc-file-input" class="doc-upload-zone" id="doc-upload-zone"
-      ondragover="event.preventDefault();this.classList.add('drag-over')"
-      ondragleave="this.classList.remove('drag-over')"
+    <div style="border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:2rem 1rem;text-align:center;cursor:pointer;background:var(--surface);transition:all .2s"
+      id="doc-drop-zone"
+      onclick="document.getElementById('doc-file-inp').click()"
+      ondragover="event.preventDefault();this.style.background='var(--blue-bg)';this.style.borderColor='var(--zinnov)'"
+      ondragleave="this.style.background='var(--surface)';this.style.borderColor='var(--border2)'"
       ondrop="handleDocDrop(event,'${prog.id}')">
-      <div class="doc-upload-icon"><i class="ti ti-cloud-upload"></i></div>
-      <div class="doc-upload-title">Click to upload or drag & drop</div>
-      <div class="doc-upload-sub">Images (PNG, JPG), PDF, Word (.docx), Excel (.xlsx), Text files</div>
-      <div class="doc-upload-sub" style="margin-top:4px;color:var(--blue)">Max 10MB</div>
-    </label>
-    <input type="file" id="doc-file-input" style="display:none"
+      <i class="ti ti-cloud-upload" style="font-size:36px;color:var(--text3);display:block;margin-bottom:8px"></i>
+      <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px">Click or drag & drop your file here</div>
+      <div style="font-size:11px;color:var(--text3)">PNG · JPG · PDF · DOCX · XLSX · TXT · Max 10MB</div>
+    </div>
+    <input type="file" id="doc-file-inp" style="display:none;position:absolute"
       accept="image/*,.pdf,.docx,.xlsx,.txt,.csv"
       onchange="handleDocFile(event,'${prog.id}')">
 
-    <div id="doc-preview-area"></div>
+    <div id="doc-file-preview" style="display:none;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:.85rem 1rem">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i id="doc-file-icon" class="ti ti-file" style="font-size:24px;color:var(--blue);flex-shrink:0"></i>
+        <div style="flex:1;min-width:0">
+          <div id="doc-file-name" style="font-size:12px;font-weight:600;color:var(--text)"></div>
+          <div id="doc-file-size" style="font-size:10px;color:var(--text3)"></div>
+        </div>
+        <button onclick="clearDocFile('${prog.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">×</button>
+      </div>
+      <div id="doc-img-preview" style="display:none;margin-top:10px">
+        <img id="doc-img" src="" alt="Preview" style="max-width:100%;max-height:180px;border-radius:var(--radius);display:block">
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="font-size:11px;color:var(--text3)">${modeHints[_docExtractMode]||''}</div>
+        <button onclick="extractFromDoc('${prog.id}')"
+          style="padding:7px 18px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0">
+          <i class="ti ti-sparkles" style="font-size:13px"></i>Extract with AI
+        </button>
+      </div>
+    </div>
+
+    <div id="doc-status" style="font-size:11px;color:var(--text3);margin-top:8px;min-height:18px"></div>
     <div id="doc-result-area"></div>
   </div>`;
 }
@@ -3157,53 +3177,59 @@ function processDocFile(file, progId){
   if(file.size > 10 * 1024 * 1024){showToast('File too large — max 10MB');return;}
   _docFile = file;
   _docMime = file.type;
-
-  const previewArea = document.getElementById('doc-preview-area');
-  const resultArea = document.getElementById('doc-result-area');
-  if(resultArea) resultArea.innerHTML = '';
+  document.getElementById('doc-result-area').innerHTML = '';
+  document.getElementById('doc-status').innerHTML = '';
 
   const isImage = file.type.startsWith('image/');
-  const isPDF = file.type === 'application/pdf';
   const ext = file.name.split('.').pop().toLowerCase();
-  const icon = isImage ? 'ti-photo' : isPDF ? 'ti-file-type-pdf' :
-    ext==='docx'?'ti-file-type-doc': ext==='xlsx'?'ti-file-type-xls':'ti-file-text';
-  const iconColor = isPDF?'#E24B4A': ext==='docx'?'#185FA5': ext==='xlsx'?'#639922':'#6b6960';
+  const iconMap = {pdf:'ti-file-type-pdf',docx:'ti-file-type-doc',doc:'ti-file-type-doc',
+    xlsx:'ti-file-type-xls',xls:'ti-file-type-xls',txt:'ti-file-text',csv:'ti-file-text'};
+  const colorMap = {pdf:'#E24B4A',docx:'#185FA5',doc:'#185FA5',xlsx:'#639922',xls:'#639922'};
+  const icon = isImage ? 'ti-photo' : (iconMap[ext]||'ti-file');
+  const color = isImage ? '#9b9a94' : (colorMap[ext]||'#6b6960');
+
+  // Show file info
+  const preview = document.getElementById('doc-file-preview');
+  const iconEl = document.getElementById('doc-file-icon');
+  const nameEl = document.getElementById('doc-file-name');
+  const sizeEl = document.getElementById('doc-file-size');
+  if(preview) preview.style.display = 'block';
+  if(iconEl){ iconEl.className = `ti ${icon}`; iconEl.style.color = color; }
+  if(nameEl) nameEl.textContent = file.name;
+  if(sizeEl) sizeEl.textContent = `${(file.size/1024).toFixed(1)}KB · ${file.type||ext.toUpperCase()}`;
 
   const reader = new FileReader();
   reader.onload = function(ev){
     _docBase64 = ev.target.result.split(',')[1];
-
-    let preview = `<div class="doc-preview-card">
-      <div class="doc-file-info">
-        <i class="ti ${icon}" style="font-size:22px;color:${iconColor}"></i>
-        <div>
-          <div class="doc-file-name">${file.name}</div>
-          <div class="doc-file-size">${(file.size/1024).toFixed(1)}KB · ${file.type||ext.toUpperCase()}</div>
-        </div>
-      </div>`;
-
+    // Show image preview if image
     if(isImage){
-      preview += `<img src="${ev.target.result}" class="doc-preview-img" alt="Preview">`;
+      const imgPreview = document.getElementById('doc-img-preview');
+      const img = document.getElementById('doc-img');
+      if(imgPreview) imgPreview.style.display = 'block';
+      if(img) img.src = ev.target.result;
     }
-
-    const modeLabel = _docExtractMode==='tasks'?'Extract task updates':
-      _docExtractMode==='sow'?'Extract project plan':'Summarise document';
-
-    preview += `<button class="doc-extract-btn" onclick="extractFromDoc('${progId}')">
-        <i class="ti ti-sparkles" style="font-size:13px"></i>${modeLabel}
-      </button>
-      <div id="doc-extract-status" style="font-size:11px;color:var(--text3);margin-top:6px"></div>
-    </div>`;
-
-    if(previewArea) previewArea.innerHTML = preview;
   };
   reader.readAsDataURL(file);
+}
+
+function clearDocFile(progId){
+  _docFile=null;_docBase64=null;_docMime=null;
+  const preview=document.getElementById('doc-file-preview');
+  const imgPreview=document.getElementById('doc-img-preview');
+  const result=document.getElementById('doc-result-area');
+  const status=document.getElementById('doc-status');
+  if(preview)preview.style.display='none';
+  if(imgPreview)imgPreview.style.display='none';
+  if(result)result.innerHTML='';
+  if(status)status.innerHTML='';
+  const inp=document.getElementById('doc-file-inp');
+  if(inp)inp.value='';
 }
 
 async function extractFromDoc(progId){
   if(!_docBase64){showToast('Please upload a file first');return;}
 
-  const statusEl = document.getElementById('doc-extract-status');
+  const statusEl = document.getElementById('doc-status');
   if(statusEl) statusEl.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Extracting with AI...';
 
   let apiKey = localStorage.getItem('gcc_gemini_key')||'';
@@ -3340,6 +3366,281 @@ function useAsTeamUpdate(progId, text){
     const inp = document.getElementById('team-update-input');
     if(inp){inp.value=text;inp.focus();}
   },200);
+}
+
+
+
+function renderAIImportPane(prog){
+  const modeDesc = {
+    tasks:'Extract action items and task updates — matches to existing tasks for one-click apply',
+    sow:'Generate a full project plan with workstreams, tasks, owners and timelines',
+    summary:'Get a structured summary of key points, decisions, risks and next steps'
+  };
+  return `<div>
+    <!-- Header -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:7px">
+        <i class="ti ti-sparkles" style="font-size:15px;color:var(--blue)"></i>AI Import
+      </div>
+      <div style="font-size:11px;color:var(--text3)">Paste text or upload a file — AI extracts structured project data</div>
+    </div>
+
+    <!-- Mode selector -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+      ${['tasks','sow','summary'].map(m=>`
+        <div onclick="setAIImportMode('${m}','${prog.id}')"
+          style="padding:.65rem .85rem;border-radius:var(--radius-lg);border:1.5px solid ${_docExtractMode===m?'var(--zinnov)':'var(--border)'};background:${_docExtractMode===m?'var(--blue-bg)':'var(--surface)'};cursor:pointer;transition:all .15s">
+          <div style="font-size:13px;margin-bottom:3px">${m==='tasks'?'📋':m==='sow'?'🏗️':'💡'}</div>
+          <div style="font-size:11px;font-weight:600;color:${_docExtractMode===m?'var(--blue)':'var(--text)'}">
+            ${m==='tasks'?'Task updates':m==='sow'?'Build project':'Summarise'}
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.4">${modeDesc[m]}</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- Two input methods side by side on desktop, stacked on mobile -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" class="ai-import-grid">
+
+      <!-- LEFT: Paste text -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:5px">
+          <i class="ti ti-clipboard-text" style="font-size:12px"></i>Paste text
+        </div>
+        <textarea id="ai-paste-input" style="flex:1;min-height:160px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:11px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--surface);resize:none;line-height:1.6"
+          placeholder="${_docExtractMode==='tasks'?
+            'Paste WhatsApp/Teams messages, meeting notes, bullet points...\n\n• Vaishali to schedule Workday workshop by Monday\n• Bank account opened ✓\n• Office fit-out delayed, Hari chasing vendor':
+            _docExtractMode==='sow'?
+            'Paste your Statement of Work, scope document, or project brief...\n\nProject: GCC Setup\nTimeline: June–Sept 2026\n\nScope:\n1. Legal — incorporate entity, draft MOA/AOA\n2. Office — lease space, fit-out, IT\n3. Talent — hire 50 FTEs':'Paste any document text to summarise...'}"></textarea>
+        <button onclick="runAIImport('${prog.id}','text')"
+          style="padding:7px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px">
+          <i class="ti ti-sparkles" style="font-size:12px"></i>Run AI
+        </button>
+      </div>
+
+      <!-- RIGHT: Upload file -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:5px">
+          <i class="ti ti-file-upload" style="font-size:12px"></i>Upload file
+        </div>
+
+        <!-- Drop zone -->
+        <div id="ai-drop-zone" onclick="document.getElementById('ai-file-inp').click()"
+          ondragover="event.preventDefault();this.style.background='var(--blue-bg)';this.style.borderColor='var(--zinnov)'"
+          ondragleave="this.style.background='var(--surface2)';this.style.borderColor='var(--border2)'"
+          ondrop="handleAIFileDrop(event,'${prog.id}')"
+          style="flex:1;min-height:100px;border:2px dashed var(--border2);border-radius:var(--radius);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;padding:1rem;text-align:center">
+          <i id="ai-file-icon" class="ti ti-cloud-upload" style="font-size:28px;color:var(--text3);margin-bottom:6px"></i>
+          <div id="ai-file-label" style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:2px">Click or drag & drop</div>
+          <div id="ai-file-sub" style="font-size:10px;color:var(--text3)">PNG · JPG · PDF · DOCX · XLSX · TXT</div>
+        </div>
+        <input type="file" id="ai-file-inp" style="display:none;position:absolute"
+          accept="image/*,.pdf,.docx,.xlsx,.txt,.csv"
+          onchange="handleAIFileSelect(event,'${prog.id}')">
+
+        <div id="ai-img-preview" style="display:none">
+          <img id="ai-img" src="" alt="" style="max-width:100%;max-height:100px;border-radius:var(--radius);display:block">
+        </div>
+
+        <button onclick="runAIImport('${prog.id}','file')"
+          style="padding:7px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px">
+          <i class="ti ti-sparkles" style="font-size:12px"></i>Extract with AI
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile stacking for grid -->
+    <style>.ai-import-grid{grid-template-columns:1fr 1fr}@media(max-width:600px){.ai-import-grid{grid-template-columns:1fr}}</style>
+
+    <!-- Status + Result -->
+    <div id="ai-import-status" style="font-size:11px;color:var(--text3);margin-top:10px;min-height:18px"></div>
+    <div id="ai-import-result"></div>
+  </div>`;
+}
+
+function setAIImportMode(mode, progId){
+  _docExtractMode = mode;
+  const prog = state.programmes.find(p=>p.id===progId);
+  const el = document.getElementById('spane-aiimport');
+  if(el && prog) el.innerHTML = renderAIImportPane(prog);
+}
+
+function handleAIFileDrop(e, progId){
+  e.preventDefault();
+  const zone = document.getElementById('ai-drop-zone');
+  if(zone){zone.style.background='var(--surface2)';zone.style.borderColor='var(--border2)';}
+  const file = e.dataTransfer.files[0];
+  if(file) loadAIFile(file, progId);
+}
+
+function handleAIFileSelect(e, progId){
+  const file = e.target.files[0];
+  if(file) loadAIFile(file, progId);
+}
+
+function loadAIFile(file, progId){
+  if(file.size > 10*1024*1024){showToast('File too large — max 10MB');return;}
+  _docFile = file; _docMime = file.type;
+  const isImg = file.type.startsWith('image/');
+  const ext = file.name.split('.').pop().toLowerCase();
+  const iconMap = {pdf:'ti-file-type-pdf',docx:'ti-file-type-doc',doc:'ti-file-type-doc',
+    xlsx:'ti-file-type-xls',xls:'ti-file-type-xls',txt:'ti-file-text',csv:'ti-file-text'};
+  const colorMap = {pdf:'#E24B4A',docx:'#185FA5',doc:'#185FA5',xlsx:'#639922',xls:'#639922'};
+
+  const iconEl=document.getElementById('ai-file-icon');
+  const labelEl=document.getElementById('ai-file-label');
+  const subEl=document.getElementById('ai-file-sub');
+  if(iconEl){iconEl.className=`ti ${isImg?'ti-photo':(iconMap[ext]||'ti-file')}`;iconEl.style.color=colorMap[ext]||'#6b6960';}
+  if(labelEl) labelEl.textContent = file.name.length>25?file.name.slice(0,22)+'...':file.name;
+  if(subEl) subEl.textContent = `${(file.size/1024).toFixed(1)}KB · Click to change`;
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    _docBase64 = ev.target.result.split(',')[1];
+    if(isImg){
+      const preview=document.getElementById('ai-img-preview');
+      const img=document.getElementById('ai-img');
+      if(preview)preview.style.display='block';
+      if(img)img.src=ev.target.result;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function runAIImport(progId, source){
+  const prog = state.programmes.find(p=>p.id===progId);
+  if(!prog)return;
+
+  let content = '';
+  let isImage = false;
+  if(source==='text'){
+    content = document.getElementById('ai-paste-input')?.value.trim();
+    if(!content){showToast('Please paste some text first');return;}
+  } else {
+    if(!_docBase64){showToast('Please upload a file first');return;}
+    isImage = _docMime && _docMime.startsWith('image/');
+    content = `File: ${_docFile?.name}`;
+  }
+
+  let apiKey = localStorage.getItem('gcc_gemini_key')||'';
+  if(!apiKey){
+    apiKey = prompt('Enter your OpenRouter API key (openrouter.ai/keys):','');
+    if(!apiKey)return;
+    localStorage.setItem('gcc_gemini_key',apiKey);
+  }
+
+  const statusEl = document.getElementById('ai-import-status');
+  const resultEl = document.getElementById('ai-import-result');
+  if(statusEl) statusEl.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite;margin-right:5px"></i>AI is processing...';
+  if(resultEl) resultEl.innerHTML = '';
+
+  /* Build system prompt based on mode */
+  const taskList = prog.workstreams.flatMap(ws=>ws.levels.flatMap(lv=>lv.tasks.map(t=>({id:t.id,name:t.name,wsName:ws.name,pct:t.pct}))));
+
+  const prompts = {
+    tasks: {
+      system: `Extract task updates and match to existing tasks. Return JSON array: [{taskId,taskName,wsName,owner,dueDate,progress,status,note}]. Existing tasks: ${JSON.stringify(taskList)}. Return ONLY JSON array.`,
+      user: `Extract all task updates, action items and status changes from this content.`
+    },
+    sow: {
+      system: `Convert to structured project plan. Return JSON: {programmeName,company,location,timeline,workstreams:[{name,icon,tasks:[{level,label,name,owner,start,end,pct}]}]}. Return ONLY JSON.`,
+      user: `Extract complete project structure, workstreams, tasks, owners and timelines.`
+    },
+    summary: {
+      system: `You are a project management analyst. Summarise documents clearly with sections: Key Points, Action Items, Decisions Made, Risks & Issues, Next Steps.`,
+      user: `Summarise this for a project manager.`
+    }
+  };
+
+  const p = prompts[_docExtractMode];
+  let messages;
+  if(source==='file' && isImage){
+    messages = [{role:'user',content:[{type:'text',text:p.user},{type:'image_url',image_url:{url:`data:${_docMime};base64,${_docBase64}`}}]}];
+  } else if(source==='file'){
+    messages = [{role:'user',content:`${p.user}\n\nDocument: ${_docFile?.name}\n(Non-image file — extract all text, tables and structured data)`}];
+  } else {
+    messages = [{role:'user',content:`${p.user}\n\n${content}`}];
+  }
+
+  try{
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`,'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/','X-Title':'GCC Command Center'},
+      body:JSON.stringify({model:'google/gemini-flash-1.5',messages:[{role:'system',content:p.system},...messages],max_tokens:2000})
+    });
+    const d = await r.json();
+    if(statusEl) statusEl.innerHTML = '';
+    if(!r.ok){
+      if(statusEl) statusEl.innerHTML = `<span style="color:#E24B4A">❌ ${d?.error?.message||'API error'}</span>`;
+      return;
+    }
+    const reply = d?.choices?.[0]?.message?.content||'';
+
+    if(_docExtractMode==='tasks'){
+      try{
+        const updates = JSON.parse(reply.replace(/```json|```/g,'').trim());
+        _pendingUpdates=[..._pendingUpdates.filter(u=>u.progId!==progId),...updates.map(u=>({...u,progId,applied:false}))];
+        /* Switch to team updates tab */
+        document.querySelectorAll('.stab').forEach(t=>{if(t.textContent.includes('Team Updates'))t.click();});
+        showToast(`${updates.length} update${updates.length!==1?'s':''} extracted → review in Team Updates`);
+      }catch(e){showAIResult(reply,progId);}
+    } else if(_docExtractMode==='sow'){
+      try{
+        _sowPreview = JSON.parse(reply.replace(/```json|```/g,'').trim());
+        if(resultEl) resultEl.innerHTML = buildSowPreviewHTML(progId);
+        showToast('Project plan generated — review below');
+      }catch(e){showAIResult(reply,progId);}
+    } else {
+      showAIResult(reply, progId);
+    }
+  }catch(e){
+    if(statusEl) statusEl.innerHTML = `<span style="color:#E24B4A">❌ ${e.message}</span>`;
+  }
+}
+
+function showAIResult(text, progId){
+  const el = document.getElementById('ai-import-result');
+  if(!el) return;
+  el.innerHTML = `<div style="margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem">
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Result</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.65;white-space:pre-wrap">${text.replace(/</g,'&lt;').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}</div>
+    <div style="display:flex;gap:7px;margin-top:10px">
+      <button onclick="navigator.clipboard.writeText(atob('${btoa(unescape(encodeURIComponent(text)))}'));showToast('Copied!')"
+        style="padding:5px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">
+        <i class="ti ti-copy" style="font-size:11px;margin-right:3px"></i>Copy
+      </button>
+      <button onclick="document.getElementById('ai-paste-input').value=atob('${btoa(unescape(encodeURIComponent(text)))}');setAIImportMode('tasks','${progId}')"
+        style="padding:5px 12px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bg);border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">
+        <i class="ti ti-message-forward" style="font-size:11px;margin-right:3px"></i>Extract task updates
+      </button>
+    </div>
+  </div>`;
+}
+
+function buildSowPreviewHTML(progId){
+  if(!_sowPreview) return '';
+  const ws = _sowPreview.workstreams||[];
+  return `<div style="margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+    <div style="padding:.85rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${_sowPreview.programmeName||'New Programme'}</div>
+        <div style="font-size:10px;color:var(--text3)">${_sowPreview.company||''} · ${_sowPreview.location||''} · ${_sowPreview.timeline||''}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="applySowToProject('${progId}')"
+          style="padding:6px 14px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">
+          + New programme
+        </button>
+        <button onclick="applySowToProject('${progId}',true)"
+          style="padding:6px 12px;background:var(--surface);color:var(--text2);border:1px solid var(--border2);border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">
+          Add to current
+        </button>
+      </div>
+    </div>
+    ${ws.map(w=>`<div style="padding:.65rem 1rem;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:4px"><i class="ti ti-stream" style="font-size:11px;margin-right:4px;color:var(--blue)"></i>${w.name}</div>
+      ${(w.tasks||[]).map(t=>`<div style="font-size:10px;color:var(--text3);padding:1px 0 1px 16px"><i class="ti ti-point" style="font-size:8px;margin-right:3px"></i>${t.name}${t.owner?' · '+t.owner:''}${t.end?' · '+t.end:''}</div>`).join('')}
+    </div>`).join('')}
+  </div>`;
 }
 
 
