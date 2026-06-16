@@ -394,7 +394,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 .doc-tab.act{background:var(--zinnov);color:#fff;border-color:var(--zinnov)}
 
 </style>
-<!-- v:20260616092247 -->
+<!-- v:20260616092634 -->
 </head>
 <body>
 
@@ -3412,43 +3412,44 @@ function renderAIImportPane(prog){
 /* ─── GOOGLE GEMINI API (free, supports vision) ─── */
 async function callGemini(systemPrompt, userContent, isImageContent=false){
   const isImg = isImageContent && isImageContent.base64;
-  const key = isImg ? (localStorage.getItem('gcc_google_key')||'') : (localStorage.getItem('gcc_gemini_key')||localStorage.getItem('gcc_google_key')||'');
-  if(!key || key.length < 10) return {error:'No API key'};
-  
-  /* Build request body for Gemini */
-  let parts = [];
-  if(isImageContent && isImageContent.base64 && isImageContent.mime){
-    parts = [
-      {text: userContent},
-      {inline_data:{mime_type: isImageContent.mime, data: isImageContent.base64}}
-    ];
-  } else {
-    parts = [{text: userContent}];
+  const key = localStorage.getItem('gcc_gemini_key')||localStorage.getItem('gcc_google_key')||'';
+
+  if(isImg){
+    /* Use OCR.space to extract text from image (free, no key needed) */
+    try {
+      const form = new FormData();
+      form.append('base64Image','data:'+isImageContent.mime+';base64,'+isImageContent.base64);
+      form.append('apikey','K85791618788957');
+      form.append('language','eng');
+      form.append('isTable','true');
+      form.append('OCREngine','2');
+      const ocrR = await fetch('https://api.ocr.space/parse/image',{method:'POST',body:form});
+      const ocrD = await ocrR.json();
+      const ocrText = ocrD?.ParsedResults?.[0]?.ParsedText||'';
+      if(!ocrText.trim()) return {error:'Could not read text from image. Try a higher resolution screenshot.'};
+      /* Now send OCR text to OpenRouter for AI analysis */
+      if(!key || key.length<10) return {text:'Text extracted from image:\n\n'+ocrText};
+      const r2 = await fetch('https://openrouter.ai/api/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key,'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/','X-Title':'GCC'},
+        body:JSON.stringify({model:'openrouter/free',messages:[{role:'system',content:systemPrompt},{role:'user',content:userContent+'\n\nText extracted from image:\n'+ocrText}],max_tokens:2000})
+      });
+      const d2 = await r2.json();
+      if(!r2.ok) return {error:d2?.error?.message||'AI error'};
+      return {text:d2?.choices?.[0]?.message?.content||''};
+    } catch(e){ return {error:e.message}; }
   }
 
-  const body = {
-    system_instruction:{parts:[{text:systemPrompt}]},
-    contents:[{role:'user', parts}],
-    generationConfig:{maxOutputTokens:2000, temperature:0.3}
-  };
-
-  /* Try API key first, then OAuth Bearer */
-  const isOAuth = key.startsWith('AQ') || key.startsWith('ya29') || key.includes('.');
-  const url = isOAuth
-    ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
-    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
-  const headers = {'Content-Type':'application/json'};
-  if(isOAuth) headers['Authorization'] = `Bearer ${key}`;
-
-  try {
-    const r = await fetch(url, {method:'POST', headers, body:JSON.stringify(body)});
-    const d = await r.json();
-    if(!r.ok) return {error: d?.error?.message || `HTTP ${r.status}`};
-    const text = d?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    return {text};
-  } catch(e){
-    return {error: e.message};
-  }
+  /* Text mode — use OpenRouter */
+  if(!key || key.length < 10) return {error:'No API key — enter your OpenRouter key above'};
+  const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key,'HTTP-Referer':'https://saubhatia-debug.github.io/zgcc/','X-Title':'GCC'},
+    body:JSON.stringify({model:'openrouter/free',messages:[{role:'system',content:systemPrompt},{role:'user',content:userContent}],max_tokens:2000})
+  });
+  const d = await r.json();
+  if(!r.ok) return {error:d?.error?.message||'HTTP '+r.status};
+  return {text:d?.choices?.[0]?.message?.content||''};
 }
 
 /* Chat format for agent (multi-turn) */
@@ -3488,27 +3489,21 @@ async function callGeminiChat(systemPrompt, history){
 
 function renderAIKeyBar(){
   const k1=localStorage.getItem('gcc_gemini_key')||'';
-  const k2=localStorage.getItem('gcc_google_key')||'';
-  const hasT=k1.length>10, hasV=k2.length>10;
+  const hasT=k1.length>10;
   const textBox = hasT
-    ? `<div style="font-size:10px;color:var(--green)">${k1.slice(0,16)}... <button onclick="clearTextKey()" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:10px;text-decoration:underline;padding:0">change</button></div>`
-    : `<div style="display:flex;gap:5px"><input id="ai-text-key" type="password" placeholder="sk-or-... openrouter.ai/keys" style="flex:1;padding:5px 7px;border:1px solid #F5C842;border-radius:4px;font-size:10px;background:#fff;font-family:'DM Sans',sans-serif"><button onclick="saveTextKey()" style="padding:5px 9px;background:#92650A;color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer">Save</button></div>`;
-  const visionBox = hasV
-    ? `<div style="font-size:10px;color:var(--green)">${k2.slice(0,16)}... <button onclick="clearVisionKey()" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:10px;text-decoration:underline;padding:0">change</button></div>`
-    : `<div style="display:flex;gap:5px"><input id="ai-vision-key" type="password" placeholder="AQ... aistudio.google.com/apikey" style="flex:1;padding:5px 7px;border:1px solid var(--border2);border-radius:4px;font-size:10px;background:#fff;font-family:'DM Sans',sans-serif"><button onclick="saveVisionKey()" style="padding:5px 9px;background:var(--zinnov);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer">Save</button></div>`;
-  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-    <div style="padding:9px 10px;border-radius:var(--radius);border:1px solid ${hasT?'var(--green-bg)':'#F5C842'};background:${hasT?'var(--green-bg)':'#FEF3CD'}">
-      <div style="font-size:10px;font-weight:600;color:${hasT?'var(--green)':'#92650A'};margin-bottom:5px">
-        <i class="ti ti-${hasT?'circle-check':'key'}" style="font-size:11px;margin-right:3px"></i>Text AI · OpenRouter ${hasT?'✓':'— required'}
-      </div>${textBox}
+    ? `<div style="font-size:10px;color:var(--green)">${k1.slice(0,18)}... <button onclick="clearTextKey()" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:10px;text-decoration:underline;padding:0">change</button></div>`
+    : `<div style="display:flex;gap:5px;margin-bottom:4px"><input id="ai-text-key" type="password" placeholder="sk-or-... from openrouter.ai/keys" style="flex:1;padding:5px 7px;border:1px solid #F5C842;border-radius:4px;font-size:10px;background:#fff;font-family:'DM Sans',sans-serif"><button onclick="saveTextKey()" style="padding:5px 9px;background:#92650A;color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer">Save</button></div>`;
+  return `<div style="padding:9px 10px;border-radius:var(--radius);border:1px solid ${hasT?'var(--green-bg)':'#F5C842'};background:${hasT?'var(--green-bg)':'#FEF3CD'};margin-bottom:14px">
+    <div style="font-size:10px;font-weight:600;color:${hasT?'var(--green)':'#92650A'};margin-bottom:5px">
+      <i class="ti ti-${hasT?'circle-check':'key'}" style="font-size:11px;margin-right:3px"></i>
+      OpenRouter API Key ${hasT?'✓ Connected':'— Required (free)'}
     </div>
-    <div style="padding:9px 10px;border-radius:var(--radius);border:1px solid ${hasV?'var(--green-bg)':'var(--border2)'};background:${hasV?'var(--green-bg)':'var(--surface2)'}">
-      <div style="font-size:10px;font-weight:600;color:${hasV?'var(--green)':'var(--text2)'};margin-bottom:5px">
-        <i class="ti ti-${hasV?'circle-check':'photo'}" style="font-size:11px;margin-right:3px"></i>Image AI · Google Studio ${hasV?'✓':'— for images'}
-      </div>${visionBox}
-    </div>
+    ${textBox}
+    ${!hasT?'<div style="font-size:10px;color:#92650A">Get free key at <strong>openrouter.ai/keys</strong> → sign up with Google → Create Key</div>':''}
+    ${hasT?'<div style="font-size:10px;color:var(--green);margin-top:2px"><i class="ti ti-photo" style="font-size:10px;margin-right:3px"></i>Image upload uses free OCR — no extra key needed</div>':''}
   </div>`;
 }
+
 function clearTextKey(){localStorage.removeItem('gcc_gemini_key');renderAll();showToast('Text key cleared');}
 function clearVisionKey(){localStorage.removeItem('gcc_google_key');renderAll();showToast('Vision key cleared');}
 function saveTextKey(){const k=(document.getElementById('ai-text-key')?.value||'').trim();if(k.length<10){showToast('Key too short');return;}localStorage.setItem('gcc_gemini_key',k);showToast('Text key saved!');renderAll();}
@@ -3596,15 +3591,13 @@ async function runAIImport(progId, source){
   }
 
   const useGoogle = source==='file' && isImage;
-  const apiKey = useGoogle
-    ? localStorage.getItem('gcc_google_key')||''
-    : localStorage.getItem('gcc_gemini_key')||'';
+  /* For images: use OCR.space (free, no key) + OpenRouter for AI analysis */
+  /* For text: use OpenRouter directly */
+  const apiKey = localStorage.getItem('gcc_gemini_key')||'';
 
-  if(!apiKey || apiKey.length < 10){
+  if(!useGoogle && (!apiKey || apiKey.length < 10)){
     const statusEl2 = document.getElementById('ai-import-status');
-    if(statusEl2) statusEl2.innerHTML = useGoogle
-      ? '<span style="color:#92650A">⚠ Enter your Google AI Studio key above (AQ... key) for image extraction</span>'
-      : '<span style="color:#92650A">⚠ Enter your OpenRouter key above (sk-or-... key) for text extraction</span>';
+    if(statusEl2) statusEl2.innerHTML = '<span style="color:#92650A">⚠ Enter your OpenRouter key above to use AI</span>';
     return;
   }
 
