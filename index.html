@@ -394,7 +394,7 @@ body:not(.viewer-mode) .ws-comment-section { display:none }
 .doc-tab.act{background:var(--zinnov);color:#fff;border-color:var(--zinnov)}
 
 </style>
-<!-- v:20260616092634 -->
+<!-- v:20260616101140 -->
 </head>
 <body>
 
@@ -3701,27 +3701,84 @@ function showAIResult(text, progId){
 function buildSowPreviewHTML(progId){
   if(!_sowPreview) return '';
   const ws = _sowPreview.workstreams||[];
-  return `<div style="margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-    <div style="padding:.85rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${_sowPreview.programmeName||'New Programme'}</div>
-        <div style="font-size:10px;color:var(--text3)">${_sowPreview.company||''} · ${_sowPreview.location||''} · ${_sowPreview.timeline||''}</div>
+  const wsRows = ws.map((w,wi)=>`
+    <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <i class="ti ti-stream" style="font-size:11px;color:var(--blue)"></i>
+        <input value="${w.name}" onchange="_sowPreview.workstreams[${wi}].name=this.value"
+          style="font-size:12px;font-weight:600;color:var(--text);border:none;background:transparent;flex:1;font-family:'DM Sans',sans-serif;padding:0;outline:none;border-bottom:1px dashed var(--border2)">
+        <button onclick="_sowPreview.workstreams.splice(${wi},1);document.getElementById('ai-import-result').innerHTML=buildSowPreviewHTML('${progId}')"
+          style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 4px;line-height:1">×</button>
       </div>
-      <div style="display:flex;gap:6px">
-        <button onclick="applySowToProject('${progId}')"
-          style="padding:6px 14px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">
-          + New programme
-        </button>
-        <button onclick="applySowToProject('${progId}',true)"
-          style="padding:6px 12px;background:var(--surface);color:var(--text2);border:1px solid var(--border2);border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">
-          Add to current
-        </button>
+      ${(w.tasks||[]).map((t,ti)=>`
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:5px;align-items:center;padding:3px 0 3px 16px;border-bottom:1px solid var(--border)">
+          <input value="${t.name||''}" onchange="_sowPreview.workstreams[${wi}].tasks[${ti}].name=this.value"
+            style="font-size:11px;color:var(--text2);border:none;background:transparent;font-family:'DM Sans',sans-serif;padding:0;outline:none;border-bottom:1px dashed var(--border2);width:100%"
+            placeholder="Task name">
+          <input value="${t.owner||''}" onchange="_sowPreview.workstreams[${wi}].tasks[${ti}].owner=this.value"
+            style="font-size:10px;color:var(--text3);border:none;background:transparent;font-family:'DM Sans',sans-serif;padding:0;outline:none;border-bottom:1px dashed var(--border2);width:100%"
+            placeholder="Owner">
+          <input type="date" value="${t.start||''}" onchange="_sowPreview.workstreams[${wi}].tasks[${ti}].start=this.value"
+            style="font-size:10px;color:var(--text3);border:none;background:transparent;font-family:'DM Sans',sans-serif;padding:0;outline:none;width:100%">
+          <input type="date" value="${t.end||''}" onchange="_sowPreview.workstreams[${wi}].tasks[${ti}].end=this.value"
+            style="font-size:10px;color:var(--text3);border:none;background:transparent;font-family:'DM Sans',sans-serif;padding:0;outline:none;width:100%">
+          <button onclick="_sowPreview.workstreams[${wi}].tasks.splice(${ti},1);document.getElementById('ai-import-result').innerHTML=buildSowPreviewHTML('${progId}')"
+            style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0 2px">×</button>
+        </div>`).join('')}
+      <button onclick="_sowPreview.workstreams[${wi}].tasks.push({name:'New task',owner:'',start:'',end:'',pct:0});document.getElementById('ai-import-result').innerHTML=buildSowPreviewHTML('${progId}')"
+        style="font-size:10px;color:var(--blue);background:none;border:none;cursor:pointer;padding:4px 16px;font-family:'DM Sans',sans-serif;margin-top:3px">
+        + Add task
+      </button>
+    </div>`).join('');
+
+  return `<div style="margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+    <!-- Header with programme name editable -->
+    <div style="padding:.85rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
+        <div style="flex:1">
+          <input value="${_sowPreview.programmeName||'New Programme'}" onchange="_sowPreview.programmeName=this.value"
+            style="font-size:14px;font-weight:600;color:var(--text);border:none;background:transparent;font-family:'DM Sans',sans-serif;width:100%;outline:none;border-bottom:1px dashed var(--border2)">
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <input value="${_sowPreview.company||''}" placeholder="Company" onchange="_sowPreview.company=this.value"
+              style="font-size:10px;color:var(--text3);border:none;background:transparent;font-family:'DM Sans',sans-serif;outline:none;border-bottom:1px dashed var(--border2);width:80px">
+            <input value="${_sowPreview.location||''}" placeholder="Location" onchange="_sowPreview.location=this.value"
+              style="font-size:10px;color:var(--text3);border:none;background:transparent;font-family:'DM Sans',sans-serif;outline:none;border-bottom:1px dashed var(--border2);width:80px">
+            <input value="${_sowPreview.timeline||''}" placeholder="Timeline" onchange="_sowPreview.timeline=this.value"
+              style="font-size:10px;color:var(--text3);border:none;background:transparent;font-family:'DM Sans',sans-serif;outline:none;border-bottom:1px dashed var(--border2);width:120px">
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button onclick="applySowToProject('${progId}')"
+            style="padding:7px 14px;background:var(--zinnov);color:#fff;border:none;border-radius:var(--radius);font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">
+            <i class="ti ti-plus" style="font-size:11px;margin-right:3px"></i>New programme
+          </button>
+          <button onclick="applySowToProject('${progId}',true)"
+            style="padding:7px 12px;background:var(--surface);color:var(--text2);border:1px solid var(--border2);border-radius:var(--radius);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">
+            Add to current
+          </button>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--text3)">
+        <i class="ti ti-edit" style="font-size:10px;margin-right:3px"></i>
+        Click any field to edit · × to delete a task or workstream · then click Apply
       </div>
     </div>
-    ${ws.map(w=>`<div style="padding:.65rem 1rem;border-bottom:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:4px"><i class="ti ti-stream" style="font-size:11px;margin-right:4px;color:var(--blue)"></i>${w.name}</div>
-      ${(w.tasks||[]).map(t=>`<div style="font-size:10px;color:var(--text3);padding:1px 0 1px 16px"><i class="ti ti-point" style="font-size:8px;margin-right:3px"></i>${t.name}${t.owner?' · '+t.owner:''}${t.end?' · '+t.end:''}</div>`).join('')}
-    </div>`).join('')}
+    <!-- Column headers -->
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:5px;padding:4px 1rem 4px 2.5rem;background:var(--surface2);border-bottom:1px solid var(--border)">
+      <div style="font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Task</div>
+      <div style="font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Owner</div>
+      <div style="font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Start</div>
+      <div style="font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">End</div>
+      <div></div>
+    </div>
+    ${wsRows}
+    <!-- Add workstream -->
+    <div style="padding:.65rem 1rem">
+      <button onclick="_sowPreview.workstreams.push({name:'New Workstream',tasks:[{name:'New task',owner:'',start:'',end:'',pct:0}]});document.getElementById('ai-import-result').innerHTML=buildSowPreviewHTML('${progId}')"
+        style="font-size:11px;color:var(--blue);background:var(--blue-bg);border:1px dashed var(--blue);border-radius:var(--radius);cursor:pointer;padding:5px 12px;font-family:'DM Sans',sans-serif;width:100%;text-align:center">
+        + Add workstream
+      </button>
+    </div>
   </div>`;
 }
 
